@@ -14,6 +14,16 @@ export interface DesktopFile {
   data: Uint8Array;
 }
 
+/** What the auto-updater is doing (see electron/updater.cjs). */
+export type UpdateStatus =
+  | { status: 'idle' }
+  | { status: 'unsupported'; reason: 'portable' | 'development' }
+  | { status: 'checking'; manual?: boolean }
+  | { status: 'latest'; manual?: boolean }
+  | { status: 'downloading'; version: string; percent: number; manual?: boolean }
+  | { status: 'ready'; version: string }
+  | { status: 'error'; message: string; manual?: boolean };
+
 interface RasterBridge {
   openFile(options: { filters?: FileFilter[] }): Promise<DesktopFile | null>;
   saveFile(options: {
@@ -24,6 +34,10 @@ interface RasterBridge {
   }): Promise<string | null>;
   setDirty(dirty: boolean): void;
   onOpenFile(callback: (file: DesktopFile) => void): void;
+  checkForUpdates(manual: boolean): Promise<UpdateStatus>;
+  getUpdateStatus(): Promise<UpdateStatus>;
+  onUpdateStatus(callback: (status: UpdateStatus) => void): void;
+  installUpdate(): void;
 }
 
 export const desktop: RasterBridge | undefined =

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { alpha, fromHex, toHex, withAlpha } from '../core/color';
 import { encodeGif } from '../core/gif';
 import { layoutSheet, packSheet, sheetMetadata } from '../core/sheet';
@@ -7,6 +7,15 @@ import { MAX_TAG_NAME } from '../core/tags';
 import { formatKeys, type Action } from '../editor/actions';
 import { useEditor, useEditorState } from '../editor/context';
 import { Swatch } from './ColorPanel';
+import {
+  autoUpdateEnabled,
+  checkForUpdates,
+  describeUpdate,
+  getUpdateStatus,
+  installUpdate,
+  setAutoUpdate,
+  subscribeUpdates,
+} from '../editor/updates';
 import { Logo } from './Logo';
 import type { Editor, TileMode } from '../editor/editor';
 import { baseName, downloadBlob, forgetFileHandle } from '../editor/files';
@@ -755,6 +764,11 @@ export function ShortcutsDialog({ onClose, actions }: { onClose: () => void; act
 }
 
 export function AboutDialog({ onClose }: { onClose: () => void }) {
+  const editor = useEditor();
+  const update = useSyncExternalStore(subscribeUpdates, getUpdateStatus);
+  const auto = useSyncExternalStore(subscribeUpdates, autoUpdateEnabled);
+  const note =
+    update.status === 'idle' || update.status === 'checking' ? null : describeUpdate(update);
   return (
     <Dialog title="About Raster" onClose={onClose}>
       <div style={{ display: 'grid', placeItems: 'center', margin: '4px 0 16px' }}>
@@ -765,7 +779,31 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         source pixel art editor.
       </p>
       <p>Released under the MIT License. Contributions are welcome.</p>
+      <div className="about-updates">
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input type="checkbox" checked={auto} onChange={(e) => setAutoUpdate(e.target.checked)} />
+          Check for updates when Raster starts
+        </label>
+        {note && (
+          <p className="hint" style={{ margin: '8px 0 0' }}>
+            {note}
+          </p>
+        )}
+      </div>
       <div className="dialog-actions">
+        {update.status === 'ready' ? (
+          <button className="btn" onClick={installUpdate}>
+            Restart to update
+          </button>
+        ) : (
+          <button
+            className="btn"
+            disabled={update.status === 'checking' || update.status === 'downloading'}
+            onClick={() => checkForUpdates(editor)}
+          >
+            Check for updates
+          </button>
+        )}
         <button className="btn primary" onClick={onClose}>
           Close
         </button>

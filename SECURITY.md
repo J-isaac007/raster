@@ -1,7 +1,9 @@
 # Security Policy
 
 Raster runs entirely on your computer. It has no server, accounts or telemetry,
-and your files never leave your machine unless you save or export them.
+and your files never leave your machine unless you save or export them. The
+installed app checks this repository's GitHub Releases for updates; downloads
+are checked against the release's SHA-512 hashes before they install.
 
 ## Reporting a vulnerability
 

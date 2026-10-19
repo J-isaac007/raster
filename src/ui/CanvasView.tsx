@@ -1,3 +1,4 @@
+import { brushOrigin, brushPixelColor } from '../core/brush';
 import { useEffect, useRef } from 'react';
 import { selectionOutline, type Edge } from '../core/mask';
 import { selectionContains, type Selection } from '../core/raster';
@@ -81,6 +82,12 @@ export function CanvasView() {
     let antsTimer = 0;
     /** Outline of the last drawn selection; recomputed when it changes. */
     let outline: { selection: Selection | null; edges: Edge[] } = { selection: null, edges: [] };
+
+    // Cached rendering of the custom brush for the cursor preview.
+    const brushCanvas = document.createElement('canvas');
+    let brushSource: unknown = null;
+    let brushModeShown = '';
+    let brushColorShown = -1;
 
     const draw = () => {
       frame = 0;
@@ -285,16 +292,48 @@ export function CanvasView() {
 
       // Brush footprint under the cursor.
       if (s.cursor && !s.panning && gesture?.kind !== 'pan' && !SELECTION_TOOLS.has(s.tool)) {
-        const size = s.tool === 'fill' || s.tool === 'picker' ? 1 : s.brushSize;
-        const start = -Math.floor((size - 1) / 2);
-        const bx = Math.round(ox + (s.cursor.x + start) * z) + 0.5;
-        const by = Math.round(oy + (s.cursor.y + start) * z) + 0.5;
-        const bs = Math.round(size * z) - 1;
+        const pointTool = s.tool === 'fill' || s.tool === 'picker';
+        const custom = pointTool ? null : s.customBrush;
+        const bw = custom ? custom.width : pointTool ? 1 : s.brushSize;
+        const bh = custom ? custom.height : bw;
+        const [sx, sy] = custom
+          ? brushOrigin(custom)
+          : [Math.floor((bw - 1) / 2), Math.floor((bh - 1) / 2)];
+        const left = ox + (s.cursor.x - sx) * z;
+        const top = oy + (s.cursor.y - sy) * z;
+        if (custom && s.tool !== 'eraser' && s.tool !== 'shade') {
+          // Ghost of the brush, in its own colors or in the current color.
+          if (
+            custom !== brushSource ||
+            s.brushMode !== brushModeShown ||
+            s.primary !== brushColorShown
+          ) {
+            brushSource = custom;
+            brushModeShown = s.brushMode;
+            brushColorShown = s.primary;
+            brushCanvas.width = custom.width;
+            brushCanvas.height = custom.height;
+            const img = new ImageData(custom.width, custom.height);
+            const out = new Uint32Array(img.data.buffer);
+            custom.pixels.forEach((c, i) => {
+              out[i] = c >>> 24 === 0 ? 0 : brushPixelColor(s.brushMode, c, s.primary);
+            });
+            brushCanvas.getContext('2d')!.putImageData(img, 0, 0);
+          }
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          ctx.drawImage(brushCanvas, left, top, custom.width * z, custom.height * z);
+          ctx.restore();
+        }
+        const bx = Math.round(left) + 0.5;
+        const by = Math.round(top) + 0.5;
+        const bws = Math.round(bw * z) - 1;
+        const bhs = Math.round(bh * z) - 1;
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.strokeRect(bx - 1, by - 1, bs + 2, bs + 2);
+        ctx.strokeRect(bx - 1, by - 1, bws + 2, bhs + 2);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.strokeRect(bx, by, bs, bs);
+        ctx.strokeRect(bx, by, bws, bhs);
       }
 
       canvas.style.cursor =

@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld('raster', {
   saveFile: (options) => ipcRenderer.invoke('file:save', options),
   /** Tells the app whether there are unsaved changes, for the quit warning. */
   setDirty: (dirty) => ipcRenderer.send('doc:dirty', dirty),
+  /** Checks GitHub for a newer version; it downloads in the background. */
+  checkForUpdates: (manual) => ipcRenderer.invoke('update:check', { manual }),
+  /** The updater's current status. */
+  getUpdateStatus: () => ipcRenderer.invoke('update:state'),
+  /** Receives updater status changes. */
+  onUpdateStatus: (callback) => ipcRenderer.on('update:status', (_event, s) => callback(s)),
+  /** Quits and installs a downloaded update, then reopens Raster. */
+  installUpdate: () => ipcRenderer.send('update:install'),
   /** Receives files the OS asked Raster to open. Call once, when ready. */
   onOpenFile: (callback) => {
     ipcRenderer.on('file:opened', (_event, file) => callback(file));

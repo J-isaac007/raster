@@ -173,6 +173,16 @@ export class EditorSelection {
     this.redrawFloating();
   }
 
+  /** The selected pixels (floating ones included), or null with nothing selected. */
+  selectedPixels(): Surface | null {
+    const f = this.floating;
+    const sel = this.core.getState().selection;
+    if (!sel) return null;
+    return f
+      ? { width: f.width, height: f.height, pixels: f.pixels.slice() }
+      : copySelection(this.core.activeLayer, sel);
+  }
+
   /** Copies the selected pixels (floating ones included) to the clipboard. */
   copy(): Surface | null {
     const f = this.floating;

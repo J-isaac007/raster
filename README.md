@@ -21,6 +21,8 @@ works offline, needs no account, and keeps your work on your machine.
 
 - **Drawing tools**: pencil, eraser, shade, flood fill, line, rectangle,
   ellipse and color picker, with brush sizes from 1 to 32 px
+- **Custom brushes**: turn any selection into a brush that stamps its own
+  colors or the current color
 - **Pixel art brushes**: pixel-perfect strokes, ordered dithering and
   palette-aware shading
 - **Animation**: frames, timeline, onion skinning, per-frame timing and
@@ -37,6 +39,8 @@ works offline, needs no account, and keeps your work on your machine.
 - **Full undo/redo** for every change to the document
 - **Files**: save and open `.raster` projects, import PNG and animated GIF,
   export PNG, GIF or sprite sheets at 1×–16× scale
+- **Automatic updates**: the installed app updates itself from GitHub
+  Releases
 - **Native desktop app**: Windows installer, `.raster` files open with a
   double-click, native open and save dialogs, works fully offline
 - **Autosave**: a refresh or crash never loses your work
@@ -108,6 +112,7 @@ npm run dev
 | Swap a palette color          | Double-click it                         |
 | Indexed color mode            | `Shift+I`                               |
 | Brush size                    | `[` and `]`                             |
+| Brush from selection / square | `Ctrl+B` / `Ctrl+Shift+B`               |
 | Undo / redo                   | `Ctrl+Z` / `Ctrl+Shift+Z`               |
 | All shortcuts                 | `?`                                     |
 
@@ -126,8 +131,10 @@ Raster is young. Planned next, roughly in order:
 - [x] Lasso and magic wand selection
 - [x] Animation tags (named loops) and linked cels
 - [x] Indexed color mode and palette swapping
-- [ ] Custom brushes from selections
-- [ ] Code-signed installer and automatic updates
+- [x] Custom brushes from selections
+- [x] Automatic updates
+- [ ] Code-signed installer (the pipeline is ready; it needs a certificate,
+      see [docs/code-signing.md](docs/code-signing.md))
 - [ ] macOS and Linux builds
 
 Ideas and votes are welcome in the issue tracker.

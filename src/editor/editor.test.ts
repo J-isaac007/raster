@@ -748,3 +748,80 @@ describe('Editor palette', () => {
     expect(px(0, 0)).toBe(GREEN);
   });
 });
+
+describe('Editor custom brushes', () => {
+  const BLUE = rgba(0, 0, 255);
+
+  /** Draws an L of RED/BLUE in the top-left and turns it into the brush. */
+  function withBrush() {
+    const t = setup(10, 10);
+    t.drag('pencil', [0, 0], [0, 0]);
+    t.ed.setPrimary(BLUE);
+    t.drag('pencil', [0, 1], [1, 1]);
+    t.ed.select({ x: 0, y: 0, width: 3, height: 3 });
+    t.ed.brushFromSelection();
+    return t;
+  }
+
+  it('makes a trimmed brush from the selection and deselects', () => {
+    const { ed } = withBrush();
+    const s = ed.getState();
+    expect(s.customBrush).toMatchObject({ width: 2, height: 2 });
+    expect(s.selection).toBeNull();
+    expect(s.tool).toBe('pencil');
+  });
+
+  it('stamps the brush colors centered on the cursor', () => {
+    const { ed, px, drag } = withBrush();
+    ed.setPrimary(rgba(0, 255, 0));
+    drag('pencil', [6, 6], [6, 6]);
+    // 2×2 brush: hot spot is its top-left pixel.
+    expect([px(6, 6), px(6, 7), px(7, 7), px(7, 6)]).toEqual([RED, BLUE, BLUE, 0]);
+  });
+
+  it('paints the current color in the brush shape in color mode', () => {
+    const { ed, px, drag } = withBrush();
+    const green = rgba(0, 255, 0);
+    ed.setOption({ brushMode: 'color' });
+    ed.setPrimary(green);
+    drag('pencil', [6, 6], [6, 6]);
+    expect([px(6, 6), px(6, 7), px(7, 7), px(7, 6)]).toEqual([green, green, green, 0]);
+  });
+
+  it('erases in the brush shape', () => {
+    const { ed, px, drag } = withBrush();
+    ed.setPrimary(BLUE);
+    ed.setBrushSize(3);
+    drag('pencil', [7, 7], [7, 7]);
+    ed.select({ x: 0, y: 0, width: 3, height: 3 });
+    ed.brushFromSelection();
+    drag('eraser', [6, 6], [6, 6]);
+    expect([px(6, 6), px(6, 7), px(7, 7), px(7, 6)]).toEqual([0, 0, 0, BLUE]);
+  });
+
+  it('mirrors stamps', () => {
+    const { ed, px, drag } = withBrush();
+    ed.setOption({ mirrorX: true });
+    drag('pencil', [2, 5], [2, 5]);
+    expect([px(2, 5), px(7, 5)]).toEqual([RED, RED]);
+    expect([px(3, 6), px(6, 6)]).toEqual([BLUE, BLUE]);
+  });
+
+  it('goes back to the square brush on request or when a size is picked', () => {
+    const { ed } = withBrush();
+    ed.clearCustomBrush();
+    expect(ed.getState().customBrush).toBeNull();
+    ed.select({ x: 0, y: 0, width: 3, height: 3 });
+    ed.brushFromSelection();
+    ed.setBrushSize(2);
+    expect(ed.getState().customBrush).toBeNull();
+  });
+
+  it('refuses an empty selection', () => {
+    const { ed } = setup();
+    ed.select({ x: 4, y: 4, width: 2, height: 2 });
+    ed.brushFromSelection();
+    expect(ed.getState().customBrush).toBeNull();
+    expect(ed.getState().message).toBe('The selection is empty');
+  });
+});

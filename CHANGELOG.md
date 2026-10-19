@@ -6,6 +6,28 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-20
+
+### Added
+
+- Custom brushes: select an area and press `Ctrl+B` (Edit › New Brush from
+  Selection) to paint with it. The pencil, eraser, shade and shape tools stamp
+  it, centered on the cursor, with symmetry and dithering. Choose whether it
+  paints its own colors or the current color in its shape. `Ctrl+Shift+B`, the
+  brush size slider or the × in the tool bar go back to the square brush.
+- Automatic updates for the installed app. Raster checks GitHub Releases when
+  it starts, downloads new versions in the background and shows **Restart to
+  update** when one is ready. Help › Check for Updates checks now; Help ›
+  About Raster turns the startup check off. The portable version doesn't
+  update itself.
+- The release pipeline signs the installer when a code-signing certificate is
+  configured. See docs/code-signing.md.
+
+### Note
+
+- Automatic updates start with this version. Install it once by hand; later
+  versions arrive on their own.
+
 ## [0.3.0] - 2026-10-20
 
 ### Added

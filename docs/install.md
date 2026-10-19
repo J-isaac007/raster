@@ -48,9 +48,19 @@ is built from the public source code by GitHub Actions
 
 ## Updating
 
-Download and run the newer `Raster-Setup-<version>.exe`. It replaces the old
-version and keeps your settings and autosaved work. Check your current version
-in **Help › About Raster**.
+The installed app updates itself. When Raster starts it checks
+[GitHub Releases](https://github.com/J-isaac007/raster/releases) for a newer
+version and downloads it in the background. When it's ready, a **Restart to
+update** button appears at the top right; click it, or the update installs the
+next time you quit Raster. Your settings and autosaved work are kept.
+
+- **Help › Check for Updates** checks right away.
+- **Help › About Raster** shows your version and has a switch to turn off the
+  check at startup.
+- The **portable** version doesn't update itself: download the new
+  `Raster-<version>-portable.exe` and replace the old one.
+- Raster 0.3.0 and earlier can't update themselves. Install the next version
+  once by hand; it updates on its own from then on.
 
 To hear about new versions, click **Watch › Custom › Releases** on the
 [repository page](https://github.com/J-isaac007/raster).
@@ -71,7 +81,9 @@ work, delete the folder `%APPDATA%\Raster`.
 | Autosave and settings | `%APPDATA%\Raster`                                  |
 | The app (installed)   | `%LOCALAPPDATA%\Programs\Raster` (per-user install) |
 
-Raster works entirely offline and never sends your art or any data anywhere.
+Raster works offline and never sends your art or any data anywhere. The only
+time it goes online is the update check, which asks GitHub for the latest
+release; turn it off in **Help › About Raster**.
 
 ## Build it yourself
 

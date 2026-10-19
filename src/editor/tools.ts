@@ -69,7 +69,8 @@ function freehand(id: ToolId, label: string, shortcut: string, mode: FreehandMod
       const s = ed.getState();
       color = mode === 'erase' ? null : colorFor(ed, e);
       shadeDir = e.button === 2 ? -1 : 1;
-      perfect = mode !== 'shade' && s.pixelPerfect && s.brushSize === 1 ? new PixelPerfect() : null;
+      const square1px = s.brushSize === 1 && !s.customBrush;
+      perfect = mode !== 'shade' && s.pixelPerfect && square1px ? new PixelPerfect() : null;
       if (e.shift && last) segment(ed, last.x, last.y, e.x, e.y);
       else segment(ed, e.x, e.y, e.x, e.y);
       last = { x: e.x, y: e.y };

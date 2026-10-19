@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatKeys, type Action } from '../editor/actions';
 import { useEditor, useEditorState } from '../editor/context';
 import { Logo } from './Logo';
+import { UpdateBadge } from './UpdateBadge';
 
 type MenuEntry = string | '-';
 
@@ -33,6 +34,9 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
       'edit.selectAll',
       'edit.deselect',
       'edit.invertSelection',
+      '-',
+      'edit.newBrush',
+      'edit.clearBrush',
       '-',
       'edit.clear',
       'edit.swap',
@@ -101,7 +105,7 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
   },
   {
     label: 'Help',
-    items: ['help.shortcuts', '-', 'help.about'],
+    items: ['help.shortcuts', '-', 'help.updates', 'help.about'],
   },
 ];
 
@@ -181,6 +185,7 @@ export function MenuBar({ actions }: { actions: Map<string, Action> }) {
           )}
         </div>
       ))}
+      <UpdateBadge />
       <div className="doc-title">
         {state.fileName}
         {state.dirty && (

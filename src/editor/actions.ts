@@ -6,6 +6,7 @@ import { baseName, downloadBlob, pickFile, saveProject } from './files';
 import { decodeImage } from './image';
 import { openAnyFile } from './openFile';
 import { TOOLS } from './tools';
+import { checkForUpdates } from './updates';
 
 export type DialogId =
   'new' | 'export' | 'canvasSize' | 'grid' | 'shortcuts' | 'about' | 'tag' | 'paletteColor';
@@ -167,6 +168,20 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       label: 'Invert Selection',
       keys: ['mod+shift+i'],
       run: () => editor.invertSelection(),
+    },
+    {
+      id: 'edit.newBrush',
+      label: 'New Brush from Selection',
+      keys: ['mod+b'],
+      run: () => editor.brushFromSelection(),
+      enabled: hasSelection,
+    },
+    {
+      id: 'edit.clearBrush',
+      label: 'Use Square Brush',
+      keys: ['mod+shift+b'],
+      run: () => editor.clearCustomBrush(),
+      enabled: (s) => s.customBrush !== null,
     },
     { id: 'edit.clear', label: 'Clear Layer', run: () => editor.clearLayer() },
     { id: 'edit.swap', label: 'Swap Colors', keys: ['x'], run: () => editor.swapColors() },
@@ -395,6 +410,7 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       keys: ['?', 'shift+?'],
       run: () => openDialog('shortcuts'),
     },
+    { id: 'help.updates', label: 'Check for Updates…', run: () => checkForUpdates(editor) },
     { id: 'help.about', label: 'About Raster', run: () => openDialog('about') },
 
     ...TOOLS.map((t) => ({

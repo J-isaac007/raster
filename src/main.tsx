@@ -4,6 +4,7 @@ import { loadAutosave } from './editor/autosave';
 import { desktop, toFile } from './editor/desktop';
 import { Editor } from './editor/editor';
 import { acceptDroppedFiles, openAnyFile } from './editor/openFile';
+import { startUpdates } from './editor/updates';
 import { App } from './ui/App';
 import './styles.css';
 
@@ -35,6 +36,9 @@ syncTitle();
 
 // Files opened from Explorer (double-click, "Open with") or a second launch.
 desktop?.onOpenFile((file) => openAnyFile(editor, toFile(file)));
+
+// Background update checks (installed app only).
+startUpdates(editor);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

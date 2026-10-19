@@ -123,3 +123,68 @@ export function shadeColor(c: Color, palette: Color[], dir: 1 | -1): Color {
   if (i >= 0) return palette[Math.min(palette.length - 1, Math.max(0, i + dir))];
   return adjustLightness(c, dir * 0.08);
 }
+
+// ---- custom brushes -----------------------------------------------------------
+
+/** A brush made from pixels (usually a selection), stamped centered on the cursor. */
+export interface CustomBrush {
+  width: number;
+  height: number;
+  /** Row-major RGBA. Never mutated once made. */
+  pixels: Uint32Array;
+}
+
+/** `image` paints the brush's own colors; `color` paints the current color in its shape. */
+export type BrushMode = 'image' | 'color';
+
+/**
+ * Makes a brush from pixels, trimming fully transparent rows and columns.
+ * Returns null when every pixel is transparent.
+ */
+export function makeCustomBrush(src: {
+  width: number;
+  height: number;
+  pixels: Uint32Array;
+}): CustomBrush | null {
+  let x0 = src.width;
+  let y0 = src.height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < src.height; y++) {
+    for (let x = 0; x < src.width; x++) {
+      if (alpha(src.pixels[y * src.width + x]) === 0) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  const width = x1 - x0 + 1;
+  const height = y1 - y0 + 1;
+  const pixels = new Uint32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    const from = (y0 + y) * src.width + x0;
+    pixels.set(src.pixels.subarray(from, from + width), y * width);
+  }
+  return { width, height, pixels };
+}
+
+/**
+ * Offset from a brush's top-left pixel to its hot spot, matching how square
+ * brushes center (`plotBrush`): the middle pixel, or just left/up of middle.
+ */
+export function brushOrigin(brush: { width: number; height: number }): [number, number] {
+  return [Math.floor((brush.width - 1) / 2), Math.floor((brush.height - 1) / 2)];
+}
+
+/** The color a custom brush pixel paints: its own, or `color` with its alpha as a mask. */
+export function brushPixelColor(mode: BrushMode, brushPixel: Color, color: Color): Color {
+  if (mode === 'image') return brushPixel;
+  return rgba(
+    red(color),
+    green(color),
+    blue(color),
+    Math.round((alpha(color) * alpha(brushPixel)) / 255),
+  );
+}

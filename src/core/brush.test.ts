@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { adjustLightness, DITHER_LEVELS, ditherHit, PixelPerfect, shadeColor } from './brush';
+import {
+  adjustLightness,
+  brushOrigin,
+  brushPixelColor,
+  DITHER_LEVELS,
+  ditherHit,
+  makeCustomBrush,
+  PixelPerfect,
+  shadeColor,
+} from './brush';
 import { rgba } from './color';
 import { plotLine } from './raster';
 
@@ -80,5 +89,36 @@ describe('shading', () => {
   it('round-trips through HSL', () => {
     const c = rgba(12, 200, 99, 77);
     expect(adjustLightness(c, 0)).toBe(c);
+  });
+});
+
+describe('custom brushes', () => {
+  const A = rgba(255, 0, 0);
+  const B = rgba(0, 0, 255, 128);
+
+  it('trims transparent borders', () => {
+    const brush = makeCustomBrush({
+      width: 4,
+      height: 3,
+      pixels: Uint32Array.of(0, 0, 0, 0, 0, A, B, 0, 0, 0, A, 0),
+    });
+    expect(brush).toMatchObject({ width: 2, height: 2 });
+    expect([...brush!.pixels]).toEqual([A, B, 0, A]);
+  });
+
+  it('returns null for an empty selection', () => {
+    expect(makeCustomBrush({ width: 2, height: 1, pixels: new Uint32Array(2) })).toBeNull();
+  });
+
+  it('centers like square brushes', () => {
+    expect(brushOrigin({ width: 3, height: 3 })).toEqual([1, 1]);
+    expect(brushOrigin({ width: 2, height: 4 })).toEqual([0, 1]);
+  });
+
+  it('paints its own colors or the current color masked by its alpha', () => {
+    const green = rgba(0, 255, 0);
+    expect(brushPixelColor('image', B, green)).toBe(B);
+    expect(brushPixelColor('color', B, green)).toBe(rgba(0, 255, 0, 128));
+    expect(brushPixelColor('color', A, green)).toBe(green);
   });
 });

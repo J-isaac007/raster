@@ -860,3 +860,46 @@ input[type='range'] {
   font-family: var(--mono);
   color: var(--text);
 }
+
+.custom-brush {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.brush-thumb {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--border-strong);
+  image-rendering: pixelated;
+}
+
+.update-badge {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 24px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 11px;
+}
+
+.update-badge:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.update-badge + .doc-title {
+  margin-left: 12px;
+}
+
+.about-updates {
+  padding: 10px 12px;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}

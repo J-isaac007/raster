@@ -32,6 +32,11 @@ jobs:
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build the installer
+        # Signs the installer when a certificate is configured (see
+        # docs/code-signing.md); without these secrets it builds unsigned.
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: npm run dist
 
       - name: Extract release notes
@@ -48,7 +53,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # latest.yml and the blockmap are what installed copies read to
+          # find, verify and download updates.
           gh release create "$GITHUB_REF_NAME" \
             "release/Raster-Setup-$VERSION.exe" \
+            "release/Raster-Setup-$VERSION.exe.blockmap" \
+            "release/latest.yml" \
             "release/Raster-$VERSION-portable.exe" \
             --title "Raster $VERSION" --notes-file notes.md

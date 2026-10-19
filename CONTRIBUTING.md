@@ -57,6 +57,7 @@ src/
     files.ts     Open and save dialogs, project saving (Ctrl+S overwrites)
     image.ts     PNG encode/decode, importing images and animated GIFs
     clipboard.ts Copying and pasting images on the system clipboard
+    updates.ts   Update status, startup check and messages (renderer side)
     autosave.ts  localStorage autosave
     openFile.ts  Opening dropped files and files from Explorer
     desktop.ts   The bridge to the desktop shell (native dialogs, file paths)
@@ -66,6 +67,7 @@ src/
 electron/   The desktop shell.
   main.cjs     Window, native dialogs, reading and writing files
   preload.cjs  The small `window.raster` API the page is allowed to use
+  updater.cjs  Automatic updates from GitHub Releases (installed build only)
 ```
 
 The page runs sandboxed with no Node access. Anything that touches the
@@ -154,6 +156,12 @@ it builds `Raster-Setup-<version>.exe` and `Raster-<version>-portable.exe` and
 publishes them as a GitHub Release with that version's changelog notes. The
 tag must match `package.json`. How users install them is in
 [docs/install.md](docs/install.md).
+
+The release also carries `latest.yml` and the installer's `.blockmap`:
+installed copies read them to find and verify updates, so don't remove them.
+The workflow signs the build when the `WIN_CSC_LINK` and
+`WIN_CSC_KEY_PASSWORD` secrets are set; see
+[docs/code-signing.md](docs/code-signing.md).
 
 To build locally, run `npm run dist`; the files land in `release/`.
 

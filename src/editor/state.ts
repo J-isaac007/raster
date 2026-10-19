@@ -1,4 +1,4 @@
-import { DITHER_LEVELS } from '../core/brush';
+import { DITHER_LEVELS, type BrushMode, type CustomBrush } from '../core/brush';
 import { rgba, TRANSPARENT, type Color } from '../core/color';
 import { DEFAULT_PALETTE } from '../core/palette';
 import type { Selection } from '../core/raster';
@@ -50,6 +50,10 @@ export interface EditorState {
   /** Indexed color mode: pixels and drawing colors always come from the palette. */
   indexed: boolean;
   brushSize: number;
+  /** A brush made from a selection; replaces the square brush while set. */
+  customBrush: CustomBrush | null;
+  /** How a custom brush paints: its own colors, or the current color in its shape. */
+  brushMode: BrushMode;
   shapeFilled: boolean;
   fillContiguous: boolean;
   /** The magic wand selects only pixels connected to the one clicked. */
@@ -102,6 +106,7 @@ export type EditorOptions = Pick<
   | 'showGrid'
   | 'pixelPerfect'
   | 'dither'
+  | 'brushMode'
   | 'tileMode'
   | 'showTileGrid'
 >;
@@ -133,6 +138,8 @@ export function initialState(sprite: Sprite): EditorState {
     palette: [...DEFAULT_PALETTE],
     indexed: false,
     brushSize: 1,
+    customBrush: null,
+    brushMode: 'image',
     shapeFilled: false,
     fillContiguous: true,
     wandContiguous: true,

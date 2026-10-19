@@ -1,3 +1,4 @@
+import { makeCustomBrush } from '../core/brush';
 import { blend, TRANSPARENT, type Color } from '../core/color';
 import { History, type Command } from '../core/history';
 import type { SelectMode } from '../core/mask';
@@ -280,8 +281,43 @@ export class Editor {
     this.set({ primary: this.state.secondary, secondary: this.state.primary });
   }
 
+  /** Sets the square brush size. Picking a size also drops any custom brush. */
   setBrushSize(size: number): void {
-    this.set({ brushSize: Math.min(MAX_BRUSH, Math.max(1, Math.round(size))) });
+    this.set({
+      brushSize: Math.min(MAX_BRUSH, Math.max(1, Math.round(size))),
+      customBrush: null,
+    });
+  }
+
+  /**
+   * Turns the selected pixels into the brush, then deselects so strokes
+   * aren't clipped to the old selection. Switches to the pencil if the
+   * current tool doesn't paint with a brush.
+   */
+  brushFromSelection(): void {
+    if (this.strokes.stroking) return;
+    const pixels = this.selection.selectedPixels();
+    if (!pixels) {
+      this.notify('Select an area to make a brush from');
+      return;
+    }
+    const brush = makeCustomBrush(pixels);
+    if (!brush) {
+      this.notify('The selection is empty');
+      return;
+    }
+    this.selection.deselect();
+    const paints = ['pencil', 'eraser', 'shade', 'line', 'rect', 'ellipse'];
+    this.set({
+      customBrush: brush,
+      tool: paints.includes(this.state.tool) ? this.state.tool : 'pencil',
+    });
+    this.notify(`Brush set: ${brush.width}×${brush.height}`);
+  }
+
+  /** Goes back to the square brush. */
+  clearCustomBrush(): void {
+    if (this.state.customBrush) this.set({ customBrush: null });
   }
 
   setOption(patch: Partial<EditorOptions>): void {

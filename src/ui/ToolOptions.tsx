@@ -1,4 +1,6 @@
-import { DITHER_LEVELS } from '../core/brush';
+import { X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { DITHER_LEVELS, type CustomBrush } from '../core/brush';
 import { useEditor, useEditorState } from '../editor/context';
 import { MAX_BRUSH, type ToolId } from '../editor/editor';
 import { TOOL_BY_ID } from '../editor/tools';
@@ -21,6 +23,31 @@ const HINTS: Partial<Record<ToolId, string>> = {
   shade: 'Left click lightens, right click darkens · steps along palette ramps',
 };
 
+/** A small pixelated preview of a custom brush. */
+function BrushThumb({ brush }: { brush: CustomBrush }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    canvas.width = brush.width;
+    canvas.height = brush.height;
+    const img = new ImageData(brush.width, brush.height);
+    img.data.set(
+      new Uint8ClampedArray(brush.pixels.buffer, brush.pixels.byteOffset, brush.pixels.byteLength),
+    );
+    canvas.getContext('2d')!.putImageData(img, 0, 0);
+  }, [brush]);
+  const k = 20 / Math.max(brush.width, brush.height);
+  return (
+    <canvas
+      ref={ref}
+      className="brush-thumb checker"
+      style={{ width: Math.max(1, brush.width * k), height: Math.max(1, brush.height * k) }}
+      aria-hidden="true"
+    />
+  );
+}
+
 export function ToolOptions() {
   const editor = useEditor();
   const s = useEditorState((s) => ({
@@ -33,6 +60,8 @@ export function ToolOptions() {
     mirrorY: s.mirrorY,
     pixelPerfect: s.pixelPerfect,
     dither: s.dither,
+    customBrush: s.customBrush,
+    brushMode: s.brushMode,
   }));
   const usesBrush = BRUSH_TOOLS.includes(s.tool);
   const isShape = s.tool === 'rect' || s.tool === 'ellipse';
@@ -42,7 +71,36 @@ export function ToolOptions() {
     <div className="options" role="toolbar" aria-label="Tool options">
       <span className="tool-name">{TOOL_BY_ID[s.tool].label}</span>
 
-      {usesBrush && (
+      {usesBrush && s.customBrush && (
+        <div className="custom-brush" title="Custom brush (Ctrl+B makes one from a selection)">
+          <BrushThumb brush={s.customBrush} />
+          <span className="range-label" style={{ width: 'auto' }}>
+            {s.customBrush.width}×{s.customBrush.height}
+          </span>
+          {s.tool !== 'eraser' && s.tool !== 'shade' && (
+            <select
+              className="text-input"
+              aria-label="Custom brush colors"
+              style={{ height: 24, width: 116, padding: '0 4px' }}
+              value={s.brushMode}
+              onChange={(e) => editor.setOption({ brushMode: e.target.value as 'image' | 'color' })}
+            >
+              <option value="image">Brush colors</option>
+              <option value="color">Current color</option>
+            </select>
+          )}
+          <button
+            className="icon-btn"
+            title="Use the square brush (Ctrl+Shift+B)"
+            aria-label="Use the square brush"
+            onClick={() => editor.clearCustomBrush()}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {usesBrush && !s.customBrush && (
         <label title="Brush size ([ and ])">
           Size
           <input
@@ -62,7 +120,7 @@ export function ToolOptions() {
           <input
             type="checkbox"
             checked={s.pixelPerfect}
-            disabled={s.brushSize !== 1}
+            disabled={s.brushSize !== 1 || s.customBrush !== null}
             onChange={(e) => editor.setOption({ pixelPerfect: e.target.checked })}
           />
           Pixel perfect

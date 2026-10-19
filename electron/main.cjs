@@ -4,6 +4,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require('electron')
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { setupUpdates } = require('./updater.cjs');
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const OPENABLE = /\.(raster|png|gif|webp|jpe?g|bmp)$/i;
@@ -192,6 +193,7 @@ app.setAppUserModelId('io.github.jisaac007.raster');
 
 app.whenReady().then(() => {
   queueOpens(process.argv.slice(app.isPackaged ? 1 : 2));
+  setupUpdates(() => win);
   createWindow();
 });
 

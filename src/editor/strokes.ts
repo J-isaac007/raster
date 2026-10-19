@@ -1,4 +1,4 @@
-import { DITHER_LEVELS, ditherHit, shadeColor } from '../core/brush';
+import { brushOrigin, brushPixelColor, DITHER_LEVELS, ditherHit, shadeColor } from '../core/brush';
 import { blend, TRANSPARENT, type Color } from '../core/color';
 import { applyPatch, diffPixels } from '../core/history';
 import {
@@ -64,47 +64,71 @@ export class EditorStrokes {
 
   /**
    * Calls `fn` with the layer index of every pixel a brush dab at (x, y)
-   * covers: brush size, symmetry, canvas bounds and selection applied.
+   * covers: brush shape (square of `size`, or the custom brush), symmetry,
+   * canvas bounds and selection applied. For custom brushes `fn` also gets
+   * the brush pixel's color.
    */
   private forDab(
     x: number,
     y: number,
     size: number,
-    fn: (i: number, x: number, y: number) => void,
+    fn: (i: number, x: number, y: number, brushPixel?: Color) => void,
+    allowCustom = true,
   ): void {
     const s = this.stroke;
     if (!s) return;
-    const { mirrorX, mirrorY } = this.core.getState();
+    const { mirrorX, mirrorY, customBrush } = this.core.getState();
     const { width: w, height: h } = this.core.sprite;
-    const put = (px: number, py: number) => {
+    const put = (px: number, py: number, brushPixel?: Color) => {
       [px, py] = this.view.wrap(px, py);
       if (!inBounds(s.layer, px, py) || (s.clip && !selectionContains(s.clip, px, py))) return;
-      fn(py * w + px, px, py);
+      fn(py * w + px, px, py, brushPixel);
     };
-    plotBrush(x, y, size, (px, py) => {
-      put(px, py);
-      if (mirrorX) put(w - 1 - px, py);
-      if (mirrorY) put(px, h - 1 - py);
-      if (mirrorX && mirrorY) put(w - 1 - px, h - 1 - py);
-    });
+    const visit = (px: number, py: number, brushPixel?: Color) => {
+      put(px, py, brushPixel);
+      if (mirrorX) put(w - 1 - px, py, brushPixel);
+      if (mirrorY) put(px, h - 1 - py, brushPixel);
+      if (mirrorX && mirrorY) put(w - 1 - px, h - 1 - py, brushPixel);
+    };
+    if (customBrush && allowCustom) {
+      const [ox, oy] = brushOrigin(customBrush);
+      const { width: bw, height: bh, pixels } = customBrush;
+      for (let by = 0; by < bh; by++) {
+        for (let bx = 0; bx < bw; bx++) {
+          const c = pixels[by * bw + bx];
+          if (c >>> 24 !== 0) visit(x + bx - ox, y + by - oy, c);
+        }
+      }
+      return;
+    }
+    plotBrush(x, y, size, (px, py) => visit(px, py));
   }
 
-  /** Paints a brush dab, honoring brush size, symmetry and dither. `null` erases. */
+  /**
+   * Paints a brush dab, honoring the brush (square or custom), symmetry and
+   * dither. `null` erases.
+   */
   dab(x: number, y: number, color: Color | null): void {
     const s = this.stroke;
     if (!s) return;
-    const { dither, brushSize } = this.core.getState();
-    this.forDab(x, y, brushSize, (i, px, py) => {
+    const { dither, brushSize, brushMode } = this.core.getState();
+    this.forDab(x, y, brushSize, (i, px, py, brushPixel) => {
       if (color !== null && dither < DITHER_LEVELS && !ditherHit(px, py, dither)) return;
+      if (color === null) {
+        s.layer.pixels[i] = TRANSPARENT;
+        return;
+      }
+      const paint =
+        brushPixel === undefined ? color : brushPixelColor(brushMode, brushPixel, color);
       // Blend against the stroke's base so overlapping dabs don't stack alpha.
-      s.layer.pixels[i] = color === null ? TRANSPARENT : s.snap(blend(s.base[i], color));
+      s.layer.pixels[i] = s.snap(blend(s.base[i], paint));
     });
   }
 
   /** Restores a 1px dab to how it was when the stroke began (pixel-perfect mode). */
   undab(x: number, y: number): void {
     const s = this.stroke;
-    if (s) this.forDab(x, y, 1, (i) => (s.layer.pixels[i] = s.base[i]));
+    if (s) this.forDab(x, y, 1, (i) => (s.layer.pixels[i] = s.base[i]), false);
   }
 
   /** Lightens (`dir` 1) or darkens (-1) pixels under the brush, once per stroke. */
