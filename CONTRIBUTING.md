@@ -121,6 +121,18 @@ The script bumps `package.json` and the lockfile and dates the changelog
 section. It doesn't commit or tag; it prints the git commands to run once
 you've reviewed the changes. The version shows in Help › About.
 
+### Where builds go
+
+- **Web app:** every push to `main` builds and deploys to GitHub Pages at
+  <https://j-isaac007.github.io/raster/> (`.github/workflows/deploy.yml`).
+  One-time setup: repository **Settings › Pages › Source: GitHub Actions**.
+- **Releases:** pushing a tag like `v0.2.0` creates a GitHub Release with that
+  version's changelog notes and a `raster-web-<version>.zip` for self-hosting
+  (`.github/workflows/release.yml`). The tag must match `package.json`.
+
+How users install it is documented in [docs/install.md](docs/install.md);
+keep it and the in-app steps (`INSTALL_STEPS` in `src/editor/pwa.ts`) in sync.
+
 ## Reporting bugs
 
 Open an issue with steps to reproduce, what you expected, what happened, and

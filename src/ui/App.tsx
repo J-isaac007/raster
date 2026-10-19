@@ -7,6 +7,7 @@ import { CanvasView } from './CanvasView';
 import { ColorPanel } from './ColorPanel';
 import {
   AboutDialog,
+  InstallDialog,
   CanvasSizeDialog,
   ExportDialog,
   GridDialog,
@@ -110,6 +111,7 @@ export function App({ editor }: { editor: Editor }) {
       {dialog === 'canvasSize' && <CanvasSizeDialog onClose={close} />}
       {dialog === 'grid' && <GridDialog onClose={close} />}
       {dialog === 'shortcuts' && <ShortcutsDialog onClose={close} actions={actions} />}
+      {dialog === 'install' && <InstallDialog onClose={close} />}
       {dialog === 'about' && <AboutDialog onClose={close} />}
     </EditorContext.Provider>
   );

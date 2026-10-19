@@ -6,6 +6,15 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Help › Install Raster… shows install steps for your device, with a one-click
+  install button where the browser supports it.
+- Install guide (`docs/install.md`) covering every platform, updating,
+  uninstalling and self-hosting.
+- The web app deploys to GitHub Pages automatically, and version tags publish
+  a GitHub Release with a self-hostable zip.
+
 ## [0.1.0] - 2026-10-19
 
 ### Added

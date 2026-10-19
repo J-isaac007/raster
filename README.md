@@ -7,6 +7,12 @@
 
 <p align="center"><strong>A free, open source pixel art editor.</strong></p>
 
+<p align="center">
+  <a href="https://j-isaac007.github.io/raster/"><strong>Open Raster</strong></a> ·
+  <a href="docs/install.md">Install</a> ·
+  <a href="https://github.com/J-isaac007/raster/releases">Releases</a>
+</p>
+
 Raster is a fast, focused editor for sprites, icons and game art. It runs in
 any modern browser, needs no account, and keeps your work on your machine.
 
@@ -36,7 +42,24 @@ any modern browser, needs no account, and keeps your work on your machine.
 - **Autosave**: a refresh or crash never loses your work
 - **Keyboard first**: shortcuts for every tool and command (press `?`)
 
-## Getting started
+## Install
+
+Raster runs in your browser at **<https://j-isaac007.github.io/raster/>**, with
+nothing to download. Install it from there to get its own window and icon,
+offline use and `.raster` file opening:
+
+| Device                          | How                                                    |
+| ------------------------------- | ------------------------------------------------------ |
+| Windows, macOS, Linux, ChromeOS | Chrome or Edge: install icon in the address bar        |
+| Mac with Safari                 | File › Add to Dock                                     |
+| Android                         | Chrome: ⋮ › Add to home screen › Install (no APK file) |
+| iPhone, iPad                    | Safari: Share › Add to Home Screen                     |
+
+Step-by-step instructions, updating, uninstalling and self-hosting are in the
+[install guide](docs/install.md). In the app, **Help › Install Raster…** shows
+the steps for your device.
+
+## Development
 
 Raster needs [Node.js](https://nodejs.org/) 20 or newer.
 

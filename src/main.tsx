@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { loadAutosave } from './editor/autosave';
 import { Editor } from './editor/editor';
 import { acceptDroppedFiles, openAnyFile } from './editor/openFile';
-import { handleLaunchFiles, registerServiceWorker } from './editor/pwa';
+import { handleLaunchFiles, registerServiceWorker, trackInstall } from './editor/pwa';
 import { App } from './ui/App';
 import './styles.css';
 
@@ -19,6 +19,7 @@ if (restored) {
 
 acceptDroppedFiles(editor);
 handleLaunchFiles((file) => openAnyFile(editor, file));
+trackInstall();
 registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(

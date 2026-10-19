@@ -1,0 +1,51 @@
+# Creates a GitHub Release when a version tag (v1.2.3) is pushed. The release
+# notes come from that version's CHANGELOG section, and a zip of the built
+# web app is attached for anyone who wants to host Raster themselves.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      - name: Check the tag matches package.json
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test "$(node -p "require('./package.json').version")" = "$version" \
+            || { echo "Tag $GITHUB_REF_NAME does not match package.json"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Extract release notes
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          printf '\n---\nUse it now at https://%s.github.io/%s/ or see [how to install](https://github.com/%s/blob/main/docs/install.md).\n' \
+            "${GITHUB_REPOSITORY_OWNER,,}" "${GITHUB_REPOSITORY#*/}" "$GITHUB_REPOSITORY" >> notes.md
+
+      - name: Package the web app
+        run: cd dist && zip -r "../raster-web-$VERSION.zip" .
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "raster-web-$VERSION.zip" \
+            --title "Raster $VERSION" --notes-file notes.md
