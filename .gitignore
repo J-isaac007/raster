@@ -10,3 +10,4 @@ Thumbs.db
 .playwright-mcp
 .claude/launch.json
 release
+graphify-out
