@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest an idea for Raster
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How do you imagine it working?
+  - type: textarea
+    attributes:
+      label: How do other editors handle it?
+      description: Links or screenshots from Aseprite, Pixelorama, LibreSprite, etc. are helpful.

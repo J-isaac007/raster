@@ -1,0 +1,24 @@
+{
+  "comment": "The Raster mark: a pixel R painted in scanlines. Each letter in `pixels` is a color key; '.' is the background. Run `node scripts/generate-icons.mjs` after editing.",
+  "size": 10,
+  "radius": 1.6,
+  "background": "#16171d",
+  "colors": {
+    "b": "#5b8cff",
+    "g": "#4ade80",
+    "y": "#ffd166",
+    "p": "#ff6b8b"
+  },
+  "pixels": [
+    "..........",
+    ".bbbbbbb..",
+    ".bb....bb.",
+    ".gg....gg.",
+    ".ggggggg..",
+    ".yy.yy....",
+    ".yy..yy...",
+    ".pp...pp..",
+    ".pp....pp.",
+    ".........."
+  ]
+}

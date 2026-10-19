@@ -1,0 +1,20 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Steps to reproduce, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser and OS
+      placeholder: Firefox 140 on Windows 11
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Anything else?
+      description: Screenshots, or a .raster file that shows the problem.
