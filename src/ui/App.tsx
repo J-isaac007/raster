@@ -11,7 +11,9 @@ import {
   ExportDialog,
   GridDialog,
   NewSpriteDialog,
+  PaletteColorDialog,
   ShortcutsDialog,
+  TagDialog,
 } from './Dialogs';
 import { LayersPanel } from './LayersPanel';
 import { MenuBar } from './MenuBar';
@@ -111,6 +113,13 @@ export function App({ editor }: { editor: Editor }) {
       {dialog === 'grid' && <GridDialog onClose={close} />}
       {dialog === 'shortcuts' && <ShortcutsDialog onClose={close} actions={actions} />}
       {dialog === 'about' && <AboutDialog onClose={close} />}
+      {dialog === 'tag' && <TagDialog index={null} onClose={close} />}
+      {dialog === 'paletteColor' && (
+        <PaletteColorDialog
+          index={editor.getState().palette.indexOf(editor.getState().primary)}
+          onClose={close}
+        />
+      )}
     </EditorContext.Provider>
   );
 }

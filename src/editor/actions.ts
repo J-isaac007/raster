@@ -1,21 +1,14 @@
 import { FormatError } from '../core/format';
 import { formatHexPalette, parsePalette } from '../core/palette';
 import type { Editor, EditorState } from './editor';
-import {
-  baseName,
-  decodeImage,
-  downloadBlob,
-  forgetFileHandle,
-  imageFileToSprite,
-  openProjectFile,
-  pickFile,
-  readClipboardImage,
-  saveProject,
-  writeClipboardImage,
-} from './io';
+import { readClipboardImage, writeClipboardImage } from './clipboard';
+import { baseName, downloadBlob, pickFile, saveProject } from './files';
+import { decodeImage } from './image';
+import { openAnyFile } from './openFile';
 import { TOOLS } from './tools';
 
-export type DialogId = 'new' | 'export' | 'canvasSize' | 'grid' | 'shortcuts' | 'about';
+export type DialogId =
+  'new' | 'export' | 'canvasSize' | 'grid' | 'shortcuts' | 'about' | 'tag' | 'paletteColor';
 
 export interface Action {
   id: string;
@@ -69,11 +62,9 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       e instanceof FormatError || e instanceof RangeError ? e.message : 'Something went wrong',
     );
 
-  const project = () => ({ sprite: editor.sprite, palette: editor.getState().palette });
-
   const save = async (saveAs: boolean) => {
     try {
-      const name = await saveProject(project(), editor.getState().fileName, saveAs);
+      const name = await saveProject(editor.project, editor.getState().fileName, saveAs);
       if (name) {
         editor.markSaved(baseName(name));
         editor.notify(`Saved ${name}`);
@@ -82,9 +73,6 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       fail(e);
     }
   };
-
-  const confirmDiscard = () =>
-    !editor.getState().dirty || window.confirm('Discard unsaved changes?');
 
   const hasLayerBelow = (s: EditorState) => s.layers.findIndex((l) => l.id === s.activeLayerId) > 0;
   const hasSelection = (s: EditorState) => s.selection !== null;
@@ -101,15 +89,8 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       label: 'Open…',
       keys: ['mod+o'],
       run: async () => {
-        if (!confirmDiscard()) return;
         const file = await pickFile('.raster,application/json');
-        if (!file) return;
-        try {
-          const { sprite, palette } = await openProjectFile(file);
-          editor.load(sprite, { palette, fileName: baseName(file.name) });
-        } catch (e) {
-          fail(e);
-        }
+        if (file) await openAnyFile(editor, file);
       },
     },
     {
@@ -117,18 +98,8 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       label: 'Import Image…',
       keys: ['mod+i'],
       run: async () => {
-        if (!confirmDiscard()) return;
         const file = await pickFile('image/png,image/gif,image/webp,image/jpeg,image/bmp');
-        if (!file) return;
-        try {
-          forgetFileHandle();
-          editor.load(await imageFileToSprite(file), {
-            fileName: baseName(file.name),
-            dirty: true,
-          });
-        } catch (e) {
-          fail(e);
-        }
+        if (file) await openAnyFile(editor, file);
       },
     },
     { id: 'file.save', label: 'Save', keys: ['mod+s'], run: () => save(false) },
@@ -190,6 +161,12 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       keys: ['mod+d'],
       run: () => editor.deselect(),
       enabled: hasSelection,
+    },
+    {
+      id: 'edit.invertSelection',
+      label: 'Invert Selection',
+      keys: ['mod+shift+i'],
+      run: () => editor.invertSelection(),
     },
     { id: 'edit.clear', label: 'Clear Layer', run: () => editor.clearLayer() },
     { id: 'edit.swap', label: 'Swap Colors', keys: ['x'], run: () => editor.swapColors() },
@@ -315,6 +292,23 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       run: () => editor.duplicateFrame(),
     },
     {
+      id: 'frame.duplicateLinked',
+      label: 'Duplicate Linked Frame',
+      keys: ['shift+alt+d'],
+      run: () => editor.duplicateLinkedFrame(),
+    },
+    {
+      id: 'frame.unlink',
+      label: 'Unlink Cel',
+      run: () => editor.unlinkCel(),
+    },
+    {
+      id: 'frame.newTag',
+      label: 'New Tag…',
+      keys: ['alt+t'],
+      run: () => openDialog('tag'),
+    },
+    {
       id: 'frame.delete',
       label: 'Delete Frame',
       keys: ['alt+Delete', 'alt+Backspace'],
@@ -363,6 +357,18 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       run: () => editor.setOnionSkin(!editor.getState().onionSkin),
     },
 
+    {
+      id: 'palette.editColor',
+      label: 'Swap Palette Color…',
+      run: () => openDialog('paletteColor'),
+      enabled: (s) => s.palette.includes(s.primary),
+    },
+    {
+      id: 'palette.indexed',
+      label: 'Toggle Indexed Color',
+      keys: ['shift+i'],
+      run: () => editor.setIndexed(!editor.getState().indexed),
+    },
     {
       id: 'palette.import',
       label: 'Load Palette…',

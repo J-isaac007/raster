@@ -33,8 +33,10 @@ src/
     color.ts     Packed RGBA colors, hex parsing, alpha blending
     sprite.ts    Sprite and layer model, compositing, flip, resize
     raster.ts    Drawing primitives: line, rect, ellipse, brush, flood fill
+    mask.ts      Selection masks: lasso, magic wand, add/subtract, outlines
+    tags.ts      Animation tags (named frame ranges) and tag-aware playback
     history.ts   Undo/redo stack and sparse pixel patches
-    palette.ts   Palette presets and .hex/.gpl parsing
+    palette.ts   Palette presets, .hex/.gpl parsing, nearest color, remapping
     format.ts    The .raster project file format
     brush.ts     Dither patterns, pixel-perfect filter, shading
     gif.ts       GIF encoder (gifDecode.ts decodes, quantize.ts reduces colors)
@@ -47,11 +49,14 @@ src/
     strokes.ts   Pixel edits from tools (dab, fill, shade), one undo step each
     selection.ts Selection, floating pixels, copy/cut/paste
     layers.ts    Layer stack: add, delete, reorder, merge, flip, properties
-    frames.ts    Animation frames, durations, playback, onion skin
+    frames.ts    Animation frames, linked cels, tags, durations, playback
+    palette.ts   Palette changes, palette swaps and indexed color mode
     view.ts      Viewport, zoom and pan, tile wrapping, reference image
     tools.ts     Tool behaviors (pointer down/move/up → editor calls)
     actions.ts   Every menu command and keyboard shortcut
-    io.ts        Browser file APIs: open, save, PNG encode/decode
+    files.ts     Open and save dialogs, project saving (Ctrl+S overwrites)
+    image.ts     PNG encode/decode, importing images and animated GIFs
+    clipboard.ts Copying and pasting images on the system clipboard
     autosave.ts  localStorage autosave
     openFile.ts  Opening dropped files and files from Explorer
     desktop.ts   The bridge to the desktop shell (native dialogs, file paths)
@@ -84,9 +89,12 @@ main process only writes to files the user picked or opened.
 - **Layers hold one cel per frame.** `layer.cels[i]` is frame `i`'s pixels and
   `layer.pixels` always points at the current frame's cel, so tools never
   deal with frames. Undo commands keep a reference to the exact cel they
-  changed and record the frame, so undo jumps back to it.
+  changed and record the frame, so undo jumps back to it. Linked cels are
+  frames whose entries are the same buffer; code that rebuilds cels uses
+  `mapCels` so links survive.
 - **Selections clip strokes and float when moved.** Strokes only touch pixels
-  inside `state.selection`. Moving or pasting lifts pixels into a floating
+  inside `state.selection`, a rectangle with an optional mask for lasso and
+  magic wand shapes. Moving or pasting lifts pixels into a floating
   buffer stamped onto the layer; `settle()` commits it as one undo step and
   runs before any other document change.
 

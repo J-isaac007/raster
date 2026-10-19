@@ -32,7 +32,8 @@ works offline, needs no account, and keeps your work on your machine.
 - **Symmetry**: mirror strokes horizontally, vertically or both
 - **Layers**: reorder, merge, rename, set opacity, hide and lock
 - **Colors**: primary and secondary colors with alpha, hex entry, palette
-  presets (PICO-8, Game Boy, grayscale), `.hex` and `.gpl` import/export
+  presets (PICO-8, Game Boy, grayscale), `.hex` and `.gpl` import/export,
+  indexed color mode and palette swapping
 - **Full undo/redo** for every change to the document
 - **Files**: save and open `.raster` projects, import PNG and animated GIF,
   export PNG, GIF or sprite sheets at 1×–16× scale
@@ -82,27 +83,33 @@ npm run dev
 
 ## Using Raster
 
-| Action                        | Input                              |
-| ----------------------------- | ---------------------------------- |
-| Draw with primary / secondary | Left / right click                 |
-| Pick a color                  | `Alt` + click, or the picker (`I`) |
-| Straight line from last point | `Shift` + click (pencil, eraser)   |
-| Snap lines and square shapes  | Hold `Shift` while dragging        |
-| Pan                           | `Space` + drag, or middle mouse    |
-| Zoom at cursor                | Mouse wheel                        |
-| Tools                         | `M` `B` `E` `G` `L` `U` `O` `I`    |
-| Move a selection              | Drag inside it (select tool)       |
-| Cut / copy / paste            | `Ctrl+X` / `Ctrl+C` / `Ctrl+V`     |
-| Select all / deselect         | `Ctrl+A` / `Ctrl+D`                |
-| Play / pause animation        | `Enter`                            |
-| Previous / next frame         | `←` / `→`                          |
-| New / duplicate frame         | `Alt+N` / `Alt+D`                  |
-| Onion skin                    | `Shift+O`                          |
-| Tile mode / tile grid         | `Shift+T` / `Shift+G`              |
-| Swap colors                   | `X`                                |
-| Brush size                    | `[` and `]`                        |
-| Undo / redo                   | `Ctrl+Z` / `Ctrl+Shift+Z`          |
-| All shortcuts                 | `?`                                |
+| Action                        | Input                                   |
+| ----------------------------- | --------------------------------------- |
+| Draw with primary / secondary | Left / right click                      |
+| Pick a color                  | `Alt` + click, or the picker (`I`)      |
+| Straight line from last point | `Shift` + click (pencil, eraser)        |
+| Snap lines and square shapes  | Hold `Shift` while dragging             |
+| Pan                           | `Space` + drag, or middle mouse         |
+| Zoom at cursor                | Mouse wheel                             |
+| Tools                         | `M` `Q` `W` `B` `E` `G` `L` `U` `O` `I` |
+| Move a selection              | Drag inside it (selection tools)        |
+| Add to / subtract a selection | `Shift` / `Ctrl` (lasso, wand)          |
+| Invert selection              | `Ctrl+Shift+I`                          |
+| Cut / copy / paste            | `Ctrl+X` / `Ctrl+C` / `Ctrl+V`          |
+| Select all / deselect         | `Ctrl+A` / `Ctrl+D`                     |
+| Play / pause animation        | `Enter`                                 |
+| Previous / next frame         | `←` / `→`                               |
+| New / duplicate frame         | `Alt+N` / `Alt+D`                       |
+| Duplicate as linked frame     | `Shift+Alt+D`                           |
+| New tag (named loop)          | `Alt+T`                                 |
+| Onion skin                    | `Shift+O`                               |
+| Tile mode / tile grid         | `Shift+T` / `Shift+G`                   |
+| Swap colors                   | `X`                                     |
+| Swap a palette color          | Double-click it                         |
+| Indexed color mode            | `Shift+I`                               |
+| Brush size                    | `[` and `]`                             |
+| Undo / redo                   | `Ctrl+Z` / `Ctrl+Shift+Z`               |
+| All shortcuts                 | `?`                                     |
 
 On macOS, use `⌘` in place of `Ctrl`.
 
@@ -116,9 +123,9 @@ Raster is young. Planned next, roughly in order:
 - [x] Pixel-perfect strokes, dithering and shading
 - [x] Tile mode, tile grid and reference images
 - [x] Windows desktop app
-- [ ] Lasso and magic wand selection
-- [ ] Animation tags (named loops) and linked cels
-- [ ] Indexed color mode and palette swapping
+- [x] Lasso and magic wand selection
+- [x] Animation tags (named loops) and linked cels
+- [x] Indexed color mode and palette swapping
 - [ ] Custom brushes from selections
 - [ ] Code-signed installer and automatic updates
 - [ ] macOS and Linux builds

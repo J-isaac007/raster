@@ -1,11 +1,22 @@
 import { DITHER_LEVELS } from '../core/brush';
 import { rgba, TRANSPARENT, type Color } from '../core/color';
 import { DEFAULT_PALETTE } from '../core/palette';
-import type { Rect } from '../core/raster';
+import type { Selection } from '../core/raster';
 import { DEFAULT_FRAME_MS, type Layer, type Sprite } from '../core/sprite';
+import type { Tag } from '../core/tags';
 
 export type ToolId =
-  'select' | 'pencil' | 'eraser' | 'shade' | 'fill' | 'line' | 'rect' | 'ellipse' | 'picker';
+  | 'select'
+  | 'lasso'
+  | 'wand'
+  | 'pencil'
+  | 'eraser'
+  | 'shade'
+  | 'fill'
+  | 'line'
+  | 'rect'
+  | 'ellipse'
+  | 'picker';
 
 /** Which axes the canvas repeats on, for drawing seamless tiles. */
 export type TileMode = 'off' | 'x' | 'y' | 'both';
@@ -36,9 +47,13 @@ export interface EditorState {
   primary: Color;
   secondary: Color;
   palette: Color[];
+  /** Indexed color mode: pixels and drawing colors always come from the palette. */
+  indexed: boolean;
   brushSize: number;
   shapeFilled: boolean;
   fillContiguous: boolean;
+  /** The magic wand selects only pixels connected to the one clicked. */
+  wandContiguous: boolean;
   mirrorX: boolean;
   mirrorY: boolean;
   /** Freehand strokes drop L-shaped corners (1px brush only). */
@@ -58,11 +73,13 @@ export interface EditorState {
   panning: boolean;
   cursor: { x: number; y: number } | null;
   /** Selected area in sprite pixels. Drawing tools only touch pixels inside it. */
-  selection: Rect | null;
+  selection: Selection | null;
   /** Index of the frame being viewed and edited. */
   frame: number;
   /** Frame durations in ms, one per frame. */
   frames: number[];
+  /** Named frame ranges (animation loops). */
+  tags: Tag[];
   playing: boolean;
   onionSkin: boolean;
   undoLabel?: string;
@@ -79,6 +96,7 @@ export type EditorOptions = Pick<
   EditorState,
   | 'shapeFilled'
   | 'fillContiguous'
+  | 'wandContiguous'
   | 'mirrorX'
   | 'mirrorY'
   | 'showGrid'
@@ -113,9 +131,11 @@ export function initialState(sprite: Sprite): EditorState {
     primary: rgba(0, 0, 0),
     secondary: TRANSPARENT,
     palette: [...DEFAULT_PALETTE],
+    indexed: false,
     brushSize: 1,
     shapeFilled: false,
     fillContiguous: true,
+    wandContiguous: true,
     mirrorX: false,
     mirrorY: false,
     pixelPerfect: false,
@@ -133,6 +153,7 @@ export function initialState(sprite: Sprite): EditorState {
     selection: null,
     frame: 0,
     frames: sprite.frames.map((f) => f.duration),
+    tags: sprite.tags,
     playing: false,
     onionSkin: false,
     fileName: 'untitled',

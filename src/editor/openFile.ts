@@ -1,14 +1,15 @@
 import { FILE_EXTENSION, FormatError } from '../core/format';
 import type { Editor } from './editor';
-import { baseName, forgetFileHandle, imageFileToSprite, openProjectFile } from './io';
+import { baseName, forgetFileHandle, openProjectFile } from './files';
+import { imageFileToSprite } from './image';
 
 /** Opens a `.raster` project or an image as a new document. */
 export async function openAnyFile(editor: Editor, file: File): Promise<void> {
   if (editor.getState().dirty && !window.confirm('Discard unsaved changes?')) return;
   try {
     if (file.name.toLowerCase().endsWith(FILE_EXTENSION)) {
-      const { sprite, palette } = await openProjectFile(file);
-      editor.load(sprite, { palette, fileName: baseName(file.name) });
+      const { sprite, palette, indexed } = await openProjectFile(file);
+      editor.load(sprite, { palette, indexed, fileName: baseName(file.name) });
     } else if (file.type.startsWith('image/')) {
       forgetFileHandle();
       editor.load(await imageFileToSprite(file), { fileName: baseName(file.name), dirty: true });

@@ -103,22 +103,33 @@ export class EditorLayers {
     }
     const upper = layers[i];
     const lower = layers[i - 1];
-    const lowerBefore = lower.cels.map((c) => c.slice());
-    lower.cels.forEach((cel, f) =>
-      mergeInto({ ...lower, pixels: cel }, { ...upper, pixels: upper.cels[f] }),
-    );
-    const lowerAfter = lower.cels.map((c) => c.slice());
+    // Merged cels are new buffers. Linked frames stay linked unless the upper
+    // layer differs between them (empty upper cels count as the same).
+    const lowerBefore = lower.cels;
+    const merged = new Map<string, Uint32Array>();
+    const upperKey = (cel: Uint32Array) =>
+      cel.every((c) => c >>> 24 === 0) ? 'empty' : upper.cels.indexOf(cel);
+    const lowerAfter = lower.cels.map((cel, f) => {
+      const key = `${lower.cels.indexOf(cel)}:${upperKey(upper.cels[f])}`;
+      let out = merged.get(key);
+      if (!out) {
+        out = cel.slice();
+        mergeInto({ ...lower, pixels: out }, { ...upper, pixels: upper.cels[f] });
+        merged.set(key, out);
+      }
+      return out;
+    });
+    lower.cels = lowerAfter;
     layers.splice(i, 1);
-    const restore = (from: Uint32Array[]) => lower.cels.forEach((c, f) => c.set(from[f]));
     core.history.push({
       label: 'Merge Down',
       undo: () => {
-        restore(lowerBefore);
+        lower.cels = lowerBefore;
         layers.splice(i, 0, upper);
         core.stage({ activeLayerId: upper.id });
       },
       redo: () => {
-        restore(lowerAfter);
+        lower.cels = lowerAfter;
         layers.splice(i, 1);
         core.stage({ activeLayerId: lower.id });
       },
@@ -168,8 +179,11 @@ export class EditorLayers {
     }
     // A layer flip changes the current cel; a sprite flip changes every cel.
     const { width, height } = core.sprite;
+    // Linked cels share a buffer: flip each buffer once.
     const targets =
-      scope === 'layer' ? [core.activeLayer.pixels] : core.sprite.layers.flatMap((l) => l.cels);
+      scope === 'layer'
+        ? [core.activeLayer.pixels]
+        : [...new Set(core.sprite.layers.flatMap((l) => l.cels))];
     const run = () => targets.forEach((pixels) => flipPixels({ width, height, pixels }, axis));
     run();
     const label = `Flip ${axis === 'horizontal' ? 'Horizontal' : 'Vertical'}`;

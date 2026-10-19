@@ -1,7 +1,16 @@
 import { TRANSPARENT } from '../core/color';
 import { applyPatch, diffPixels } from '../core/history';
-import { intersectRect, type Rect } from '../core/raster';
-import { copyRect, stamp, type Layer, type Surface } from '../core/sprite';
+import {
+  clearSelection,
+  clipSelection,
+  colorSelection,
+  combineSelections,
+  copySelection,
+  invertSelection,
+  type SelectMode,
+} from '../core/mask';
+import type { Selection } from '../core/raster';
+import { stamp, type Layer, type Surface } from '../core/sprite';
 import type { EditorCore } from './core';
 import type { EditorLayers } from './layers';
 import type { EditorStrokes } from './strokes';
@@ -20,10 +29,12 @@ interface Floating extends Surface {
   under: Uint32Array;
   x: number;
   y: number;
+  /** Shape of the lifted pixels, when not the whole rectangle. */
+  mask?: Uint8Array;
   label: string;
 }
 
-/** The selection rectangle, floating (moved or pasted) pixels and the clipboard. */
+/** The selection (rectangle or mask), floating (moved or pasted) pixels and the clipboard. */
 export class EditorSelection {
   private floating: Floating | null = null;
   /** Pixels from the last copy or cut. */
@@ -35,10 +46,6 @@ export class EditorSelection {
     private readonly layers: EditorLayers,
   ) {}
 
-  private get bounds(): Rect {
-    return { x: 0, y: 0, width: this.core.sprite.width, height: this.core.sprite.height };
-  }
-
   get hasFloating(): boolean {
     return this.floating !== null;
   }
@@ -48,14 +55,37 @@ export class EditorSelection {
     this.floating = null;
   }
 
-  /** Sets the selection, clipped to the canvas. Commits floating pixels first. */
-  select(rect: Rect | null): void {
+  /**
+   * Sets the selection, clipped to the canvas, or combines it with the current
+   * one (`add`, `subtract`). Commits floating pixels first.
+   */
+  select(sel: Selection | null, mode: SelectMode = 'replace'): void {
     this.settle();
-    this.core.set({ selection: rect && intersectRect(rect, this.bounds) });
+    const { width, height } = this.core.sprite;
+    this.core.set({
+      selection: combineSelections(this.core.getState().selection, sel, mode, width, height),
+    });
   }
 
   selectAll(): void {
-    this.select(this.bounds);
+    this.select({ x: 0, y: 0, width: this.core.sprite.width, height: this.core.sprite.height });
+  }
+
+  /**
+   * Magic wand: selects the pixels of the active layer that match the color
+   * at (x, y), connected to it unless `wandContiguous` is off.
+   */
+  selectColor(x: number, y: number, mode: SelectMode = 'replace'): void {
+    this.settle();
+    const { wandContiguous } = this.core.getState();
+    this.select(colorSelection(this.core.activeLayer, x, y, wandContiguous), mode);
+  }
+
+  /** Selects every pixel that isn't selected. */
+  invert(): void {
+    this.settle();
+    const { width, height } = this.core.sprite;
+    this.core.set({ selection: invertSelection(this.core.getState().selection, width, height) });
   }
 
   deselect(): void {
@@ -68,10 +98,8 @@ export class EditorSelection {
     if (!f) return;
     this.floating = null;
     const { target } = f;
-    const selection = intersectRect(
-      { x: f.x, y: f.y, width: f.width, height: f.height },
-      this.bounds,
-    );
+    const { width, height } = this.core.sprite;
+    const selection = clipSelection(this.floatSelection(f), width, height);
     const patch = diffPixels(f.base, target);
     if (!patch) {
       this.core.commit({ selection });
@@ -86,7 +114,14 @@ export class EditorSelection {
     this.core.commit({ selection, dirty: true });
   }
 
-  private float(pixels: Surface, x: number, y: number, under: Uint32Array, label: string): void {
+  private float(
+    pixels: Surface,
+    x: number,
+    y: number,
+    under: Uint32Array,
+    label: string,
+    mask?: Uint8Array,
+  ): void {
     const layer = this.core.activeLayer;
     this.floating = {
       ...pixels,
@@ -96,9 +131,15 @@ export class EditorSelection {
       under,
       x,
       y,
+      mask,
       label,
     };
     this.redrawFloating();
+  }
+
+  private floatSelection(f: Floating): Selection {
+    const rect = { x: f.x, y: f.y, width: f.width, height: f.height };
+    return f.mask ? { ...rect, mask: f.mask } : rect;
   }
 
   private redrawFloating(): void {
@@ -106,18 +147,9 @@ export class EditorSelection {
     f.target.set(f.under);
     stamp({ width: f.layer.width, height: f.layer.height, pixels: f.target }, f, f.x, f.y);
     this.core.set({
-      selection: { x: f.x, y: f.y, width: f.width, height: f.height },
+      selection: this.floatSelection(f),
       revision: this.core.getState().revision + 1,
     });
-  }
-
-  private clearRect(pixels: Uint32Array, rect: Rect): void {
-    const r = intersectRect(rect, this.bounds);
-    if (!r) return;
-    const w = this.core.sprite.width;
-    for (let y = r.y; y < r.y + r.height; y++) {
-      pixels.fill(TRANSPARENT, y * w + r.x, y * w + r.x + r.width);
-    }
   }
 
   /** Lifts the selected pixels off the active layer so they can be moved. */
@@ -127,8 +159,8 @@ export class EditorSelection {
     const layer = this.core.activeLayer;
     if (!sel || !this.core.canEdit(layer)) return false;
     const under = layer.pixels.slice();
-    this.clearRect(under, sel);
-    this.float(copyRect(layer, sel), sel.x, sel.y, under, 'Move');
+    clearSelection({ width: layer.width, height: layer.height, pixels: under }, sel);
+    this.float(copySelection(layer, sel), sel.x, sel.y, under, 'Move', sel.mask);
     return true;
   }
 
@@ -151,7 +183,7 @@ export class EditorSelection {
     }
     this.clipboard = f
       ? { width: f.width, height: f.height, pixels: f.pixels.slice() }
-      : copyRect(this.core.activeLayer, sel);
+      : copySelection(this.core.activeLayer, sel);
     return this.clipboard;
   }
 
@@ -171,7 +203,7 @@ export class EditorSelection {
       return;
     }
     if (!this.strokes.beginStroke()) return;
-    this.clearRect(this.core.activeLayer.pixels, sel);
+    clearSelection(this.core.activeLayer, sel);
     this.strokes.endStroke(label);
   }
 

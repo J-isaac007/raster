@@ -35,7 +35,7 @@ export function startAutosave(editor: Editor): () => void {
     const saved: Saved = {
       fileName: s.fileName,
       dirty: s.dirty,
-      project: serializeProject({ sprite: editor.sprite, palette: s.palette }),
+      project: serializeProject(editor.project),
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(saved));
@@ -50,6 +50,7 @@ export function startAutosave(editor: Editor): () => void {
       s.revision !== last.revision ||
       s.layers !== last.layers ||
       s.palette !== last.palette ||
+      s.indexed !== last.indexed ||
       s.fileName !== last.fileName ||
       s.dirty !== last.dirty;
     last = s;

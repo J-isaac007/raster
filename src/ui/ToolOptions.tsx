@@ -16,6 +16,8 @@ const DITHER_OPTIONS: [string, number][] = [
 const HINTS: Partial<Record<ToolId, string>> = {
   picker: 'Left click picks primary, right click picks secondary.',
   select: 'Drag to select · drag inside to move · Shift for a square · click to deselect',
+  lasso: 'Drag around an area · drag inside to move · Shift adds · Ctrl subtracts',
+  wand: 'Click to select a color · drag inside to move · Shift adds · Ctrl subtracts',
   shade: 'Left click lightens, right click darkens · steps along palette ramps',
 };
 
@@ -26,6 +28,7 @@ export function ToolOptions() {
     brushSize: s.brushSize,
     shapeFilled: s.shapeFilled,
     fillContiguous: s.fillContiguous,
+    wandContiguous: s.wandContiguous,
     mirrorX: s.mirrorX,
     mirrorY: s.mirrorY,
     pixelPerfect: s.pixelPerfect,
@@ -83,6 +86,17 @@ export function ToolOptions() {
             type="checkbox"
             checked={s.fillContiguous}
             onChange={(e) => editor.setOption({ fillContiguous: e.target.checked })}
+          />
+          Contiguous
+        </label>
+      )}
+
+      {s.tool === 'wand' && (
+        <label title="Only select pixels connected to the one you click">
+          <input
+            type="checkbox"
+            checked={s.wandContiguous}
+            onChange={(e) => editor.setOption({ wandContiguous: e.target.checked })}
           />
           Contiguous
         </label>

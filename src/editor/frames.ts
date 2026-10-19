@@ -1,9 +1,23 @@
 import { compositeFrame } from '../core/sprite';
+import {
+  cleanTag,
+  nextPlaybackFrame,
+  tagAt,
+  tagsAfterDelete,
+  tagsAfterInsert,
+  type Tag,
+} from '../core/tags';
 import type { EditorCore } from './core';
 import { clampDuration } from './state';
 
-/** Animation frames: navigation, adding and removing, timing and playback. */
+/**
+ * Animation frames: navigation, adding and removing, linked cels, tags,
+ * timing and playback.
+ */
 export class EditorFrames {
+  /** The tag playback loops in, picked when playback starts. */
+  private playTag: Tag | null = null;
+
   constructor(private readonly core: EditorCore) {}
 
   get frameCount(): number {
@@ -36,9 +50,12 @@ export class EditorFrames {
     const layers = [...sprite.layers];
     const frame = { duration };
     const prev = core.getState().frame;
+    const tagsBefore = sprite.tags;
+    const tagsAfter = tagsAfterInsert(tagsBefore, index);
     const apply = () => {
       sprite.frames.splice(index, 0, frame);
       layers.forEach((l, i) => l.cels.splice(index, 0, cels[i]));
+      sprite.tags = tagsAfter;
     };
     apply();
     core.history.push({
@@ -46,6 +63,7 @@ export class EditorFrames {
       undo: () => {
         sprite.frames.splice(index, 1);
         layers.forEach((l) => l.cels.splice(index, 1));
+        sprite.tags = tagsBefore;
         core.stage({ frame: prev });
       },
       redo: () => {
@@ -80,6 +98,45 @@ export class EditorFrames {
     );
   }
 
+  /** Adds a copy of the current frame whose cels are linked to it. */
+  duplicateLinkedFrame(): void {
+    const i = this.core.getState().frame;
+    const { sprite } = this.core;
+    this.insertFrame(
+      i + 1,
+      sprite.frames[i].duration,
+      sprite.layers.map((l) => l.cels[i]),
+      'Duplicate Linked Frame',
+    );
+  }
+
+  /** True if the active layer's current cel is shared with another frame. */
+  get celLinked(): boolean {
+    const { cels, pixels } = this.core.activeLayer;
+    return cels.indexOf(pixels) !== cels.lastIndexOf(pixels);
+  }
+
+  /** Gives the active layer's current frame its own copy of a linked cel. */
+  unlinkCel(): void {
+    const { core } = this;
+    core.settle();
+    if (!this.celLinked) {
+      core.notify('This cel is not linked');
+      return;
+    }
+    const layer = core.activeLayer;
+    const f = core.getState().frame;
+    const shared = layer.cels[f];
+    const own = shared.slice();
+    layer.cels[f] = own;
+    core.record({
+      label: 'Unlink Cel',
+      frame: f,
+      undo: () => (layer.cels[f] = shared),
+      redo: () => (layer.cels[f] = own),
+    });
+  }
+
   deleteFrame(): void {
     const { core } = this;
     if (this.frameCount <= 1) {
@@ -93,16 +150,21 @@ export class EditorFrames {
     const [frame] = sprite.frames.splice(i, 1);
     const removed = layers.map((l) => l.cels.splice(i, 1)[0]);
     const after = Math.min(i, sprite.frames.length - 1);
+    const tagsBefore = sprite.tags;
+    const tagsAfter = tagsAfterDelete(tagsBefore, i);
+    sprite.tags = tagsAfter;
     core.history.push({
       label: 'Delete Frame',
       undo: () => {
         sprite.frames.splice(i, 0, frame);
         layers.forEach((l, k) => l.cels.splice(i, 0, removed[k]));
+        sprite.tags = tagsBefore;
         core.stage({ frame: i });
       },
       redo: () => {
         sprite.frames.splice(i, 1);
         layers.forEach((l) => l.cels.splice(i, 1));
+        sprite.tags = tagsAfter;
         core.stage({ frame: after });
       },
     });
@@ -170,11 +232,70 @@ export class EditorFrames {
     this.core.commit({ dirty: true }, false);
   }
 
+  /** Replaces the tag list as one undo step. */
+  private setTags(tags: Tag[], label: string): void {
+    const { sprite } = this.core;
+    const before = sprite.tags;
+    sprite.tags = tags;
+    this.core.history.push({
+      label,
+      undo: () => (sprite.tags = before),
+      redo: () => (sprite.tags = tags),
+    });
+    this.core.commit({ dirty: true }, false);
+  }
+
+  /** Adds a tag; by default "Tag N" covering the current frame. */
+  addTag(tag?: Partial<Tag>): void {
+    this.core.settle();
+    const { frame } = this.core.getState();
+    const { tags } = this.core.sprite;
+    const next = cleanTag(
+      { name: `Tag ${tags.length + 1}`, from: frame, to: frame, ...tag },
+      this.frameCount,
+    );
+    this.setTags([...tags, next], 'New Tag');
+  }
+
+  /** Renames a tag or changes its frames. */
+  updateTag(index: number, patch: Partial<Tag>): void {
+    const { tags } = this.core.sprite;
+    const old = tags[index];
+    if (!old) return;
+    this.core.settle();
+    const next = cleanTag({ ...old, ...patch }, this.frameCount);
+    if (next.name === old.name && next.from === old.from && next.to === old.to) return;
+    this.setTags(
+      tags.map((t, i) => (i === index ? next : t)),
+      'Edit Tag',
+    );
+  }
+
+  deleteTag(index: number): void {
+    const { tags } = this.core.sprite;
+    if (!tags[index]) return;
+    this.core.settle();
+    this.setTags(
+      tags.filter((_, i) => i !== index),
+      'Delete Tag',
+    );
+  }
+
+  /** Starts or stops playback. It loops in the tag the current frame is in, if any. */
   setPlaying(playing: boolean): void {
     const next = playing && this.frameCount > 1 && !this.core.stroking;
     if (next === this.core.getState().playing) return;
-    if (next) this.core.settle();
+    if (next) {
+      this.core.settle();
+      this.playTag = tagAt(this.core.sprite.tags, this.core.getState().frame);
+    }
     this.core.set({ playing: next });
+  }
+
+  /** Steps playback to the next frame. */
+  advancePlayback(): void {
+    const { frame } = this.core.getState();
+    this.setFrame(nextPlaybackFrame(frame, this.frameCount, this.playTag));
   }
 
   setOnionSkin(onionSkin: boolean): void {

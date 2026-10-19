@@ -1,12 +1,13 @@
 import { fromHex, toHex, type Color } from './color';
 import { assertValidSize, createLayer, DEFAULT_FRAME_MS, type Sprite } from './sprite';
+import { cleanTag, type Tag } from './tags';
 
 /**
  * The `.raster` project format: UTF-8 JSON. Cel pixels are raw RGBA bytes,
  * row-major from the top-left, base64 encoded. See docs/file-format.md.
  */
 export const FILE_EXTENSION = '.raster';
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 4;
 export const MAX_FRAMES = 1000;
 
 interface LayerJson {
@@ -14,8 +15,11 @@ interface LayerJson {
   visible: boolean;
   locked: boolean;
   opacity: number;
-  /** v2: one entry per frame. */
-  cels?: string[];
+  /**
+   * v2+: one entry per frame. v3: `{ link: n }` reuses frame n's cel (an
+   * earlier frame of the same layer).
+   */
+  cels?: (string | { link: number })[];
   /** v1: the only image. */
   data?: string;
 }
@@ -28,12 +32,18 @@ interface RasterFileJson {
   palette: string[];
   /** v2+. */
   frames?: { duration: number }[];
+  /** v3+. */
+  tags?: Tag[];
+  /** v4+. Absent means `rgb`. */
+  colorMode?: 'rgb' | 'indexed';
   layers: LayerJson[];
 }
 
 export interface Project {
   sprite: Sprite;
   palette: Color[];
+  /** Indexed color mode (pixels limited to the palette). */
+  indexed?: boolean;
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -57,7 +67,7 @@ function fromBase64(text: string): Uint8Array {
   return bytes;
 }
 
-export function serializeProject({ sprite, palette }: Project): string {
+export function serializeProject({ sprite, palette, indexed }: Project): string {
   const file: RasterFileJson = {
     format: 'raster',
     version: FORMAT_VERSION,
@@ -65,12 +75,18 @@ export function serializeProject({ sprite, palette }: Project): string {
     height: sprite.height,
     palette: palette.map((c) => toHex(c)),
     frames: sprite.frames.map((f) => ({ duration: f.duration })),
+    tags: sprite.tags.map(({ name, from, to }) => ({ name, from, to })),
+    colorMode: indexed ? 'indexed' : 'rgb',
     layers: sprite.layers.map((l) => ({
       name: l.name,
       visible: l.visible,
       locked: l.locked,
       opacity: l.opacity,
-      cels: l.cels.map((c) => toBase64(new Uint8Array(c.buffer, c.byteOffset, c.byteLength))),
+      cels: l.cels.map((c, f) => {
+        const first = l.cels.indexOf(c);
+        if (first < f) return { link: first };
+        return toBase64(new Uint8Array(c.buffer, c.byteOffset, c.byteLength));
+      }),
     })),
   };
   return JSON.stringify(file);
@@ -117,6 +133,14 @@ export function parseProject(text: string): Project {
       throw new FormatError(`Layer "${layer.name}" needs one cel per frame.`);
     }
     cels.forEach((data, f) => {
+      if (typeof data === 'object' && data !== null) {
+        const link = data.link;
+        if (!Number.isInteger(link) || link < 0 || link >= f) {
+          throw new FormatError(`Layer "${layer.name}" has a bad cel link.`);
+        }
+        layer.cels[f] = layer.cels[link];
+        return;
+      }
       const bytes = fromBase64(String(data ?? ''));
       if (bytes.length !== width * height * 4) {
         throw new FormatError(`Layer "${layer.name}" has the wrong amount of pixel data.`);
@@ -126,12 +150,21 @@ export function parseProject(text: string): Project {
     layer.visible = l.visible !== false;
     layer.locked = l.locked === true;
     layer.opacity = Math.min(1, Math.max(0, Number(l.opacity ?? 1)));
+    layer.pixels = layer.cels[0];
     return layer;
   });
+
+  const tags = (Array.isArray(json.tags) ? json.tags : [])
+    .filter((t) => t && Number.isFinite(t.from) && Number.isFinite(t.to))
+    .map((t) => cleanTag(t, frames.length));
 
   const palette = (Array.isArray(json.palette) ? json.palette : [])
     .map((h) => fromHex(String(h)))
     .filter((c): c is Color => c !== null);
 
-  return { sprite: { width, height, layers, frames }, palette };
+  return {
+    sprite: { width, height, layers, frames, tags },
+    palette,
+    indexed: json.colorMode === 'indexed',
+  };
 }

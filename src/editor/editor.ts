@@ -1,18 +1,23 @@
 import { blend, TRANSPARENT, type Color } from '../core/color';
 import { History, type Command } from '../core/history';
-import { getPixel, inBounds, type Rect } from '../core/raster';
+import type { SelectMode } from '../core/mask';
+import { getPixel, inBounds, type Selection } from '../core/raster';
 import {
   composite,
   createSprite,
+  mapCels,
   resizePixels,
   showFrame,
   type Layer,
   type Sprite,
   type Surface,
 } from '../core/sprite';
+import type { Project } from '../core/format';
+import type { Tag } from '../core/tags';
 import type { EditorCore } from './core';
 import { EditorFrames } from './frames';
 import { EditorLayers } from './layers';
+import { EditorPalette } from './palette';
 import { EditorSelection } from './selection';
 import {
   initialState,
@@ -45,7 +50,8 @@ export class Editor {
   /** What the modules below see of the editor. */
   private readonly core: EditorCore = this.createCore();
   private readonly view = new EditorView(this.core);
-  private readonly strokes = new EditorStrokes(this.core, this.view);
+  private readonly palette = new EditorPalette(this.core);
+  private readonly strokes = new EditorStrokes(this.core, this.view, this.palette);
   private readonly layers = new EditorLayers(this.core, this.strokes);
   private readonly selection = new EditorSelection(this.core, this.strokes, this.layers);
   private readonly frames = new EditorFrames(this.core);
@@ -88,6 +94,7 @@ export class Editor {
       activeLayerId,
       frame,
       frames: this.sprite.frames.map((f) => f.duration),
+      tags: this.sprite.tags,
       undoLabel: this.history.undoLabel,
       redoLabel: this.history.redoLabel,
       revision: pixelsChanged ? this.state.revision + 1 : this.state.revision,
@@ -155,7 +162,7 @@ export class Editor {
   /** Replaces the whole document. Clears history. */
   load(
     sprite: Sprite,
-    options: { palette?: Color[]; fileName?: string; dirty?: boolean } = {},
+    options: { palette?: Color[]; indexed?: boolean; fileName?: string; dirty?: boolean } = {},
   ): void {
     this.strokes.discard();
     this.selection.discard();
@@ -167,6 +174,7 @@ export class Editor {
       playing: false,
       activeLayerId: sprite.layers[sprite.layers.length - 1].id,
       palette: options.palette?.length ? options.palette : this.state.palette,
+      indexed: options.indexed ?? false,
       fileName: options.fileName ?? 'untitled',
       dirty: options.dirty ?? false,
       cursor: null,
@@ -176,6 +184,11 @@ export class Editor {
 
   newSprite(width: number, height: number): void {
     this.load(createSprite(width, height));
+  }
+
+  /** The document as saved to a `.raster` file. */
+  get project(): Project {
+    return { sprite: this.sprite, palette: this.state.palette, indexed: this.state.indexed };
   }
 
   markSaved(fileName: string): void {
@@ -191,7 +204,7 @@ export class Editor {
     const layers = [...this.sprite.layers];
     const oldCels = layers.map((l) => l.cels);
     const newCels = layers.map((l) =>
-      l.cels.map((pixels) => resizePixels({ ...before, pixels }, width, height, ox, oy)),
+      mapCels(l.cels, (pixels) => resizePixels({ ...before, pixels }, width, height, ox, oy)),
     );
     const apply = (w: number, h: number, cels: Uint32Array[][]) => {
       this.sprite.width = w;
@@ -254,12 +267,13 @@ export class Editor {
     this.set({ tool });
   }
 
+  /** Sets the left-click color, snapped to the palette in indexed mode. */
   setPrimary(primary: Color): void {
-    this.set({ primary });
+    this.set({ primary: this.palette.snap(primary) });
   }
 
   setSecondary(secondary: Color): void {
-    this.set({ secondary });
+    this.set({ secondary: this.palette.snap(secondary) });
   }
 
   swapColors(): void {
@@ -282,13 +296,16 @@ export class Editor {
     for (const layer of this.sprite.layers) {
       if (layer.visible) color = blend(color, getPixel(layer, x, y), layer.opacity);
     }
+    color = this.palette.snap(color);
     if (color === this.state[target]) return;
     this.set(target === 'primary' ? { primary: color } : { secondary: color });
   }
 
-  setPalette(palette: Color[]): void {
-    this.set({ palette });
-  }
+  // ---- palette & indexed color (palette.ts) ---------------------------------
+
+  setPalette = (palette: Color[]) => this.palette.setPalette(palette);
+  setPaletteColor = (index: number, color: Color) => this.palette.setPaletteColor(index, color);
+  setIndexed = (indexed: boolean) => this.palette.setIndexed(indexed);
 
   // ---- layers (layers.ts) ---------------------------------------------------
 
@@ -321,15 +338,21 @@ export class Editor {
   get hasFloating(): boolean {
     return this.selection.hasFloating;
   }
-  select = (rect: Rect | null) => this.selection.select(rect);
+  select = (sel: Selection | null, mode?: SelectMode) => this.selection.select(sel, mode);
+  selectColor = (x: number, y: number, mode?: SelectMode) => {
+    [x, y] = this.wrap(x, y);
+    this.selection.selectColor(x, y, mode);
+  };
   selectAll = () => this.selection.selectAll();
+  invertSelection = () => this.selection.invert();
   deselect = () => this.selection.deselect();
   settle = () => this.selection.settle();
   liftSelection = () => this.selection.liftSelection();
   moveFloating = (x: number, y: number) => this.selection.moveFloating(x, y);
   copy = () => this.selection.copy();
   cut = () => this.selection.cut();
-  paste = (pixels?: Surface | null) => this.selection.paste(pixels);
+  paste = (pixels: Surface | null = this.clipboard) =>
+    this.selection.paste(pixels && this.palette.snapSurface(pixels));
   deleteSelection = (label?: string) => this.selection.deleteSelection(label);
 
   // ---- frames (frames.ts) ---------------------------------------------------
@@ -342,6 +365,16 @@ export class Editor {
   prevFrame = () => this.frames.prevFrame();
   addFrame = () => this.frames.addFrame();
   duplicateFrame = () => this.frames.duplicateFrame();
+  duplicateLinkedFrame = () => this.frames.duplicateLinkedFrame();
+  /** True if the active layer's current cel is shared with another frame. */
+  get celLinked(): boolean {
+    return this.frames.celLinked;
+  }
+  unlinkCel = () => this.frames.unlinkCel();
+  addTag = (tag?: Partial<Tag>) => this.frames.addTag(tag);
+  updateTag = (index: number, patch: Partial<Tag>) => this.frames.updateTag(index, patch);
+  deleteTag = (index: number) => this.frames.deleteTag(index);
+  advancePlayback = () => this.frames.advancePlayback();
   deleteFrame = () => this.frames.deleteFrame();
   moveFrame = (delta: 1 | -1) => this.frames.moveFrame(delta);
   setFrameDuration = (frame: number, ms: number) => this.frames.setFrameDuration(frame, ms);

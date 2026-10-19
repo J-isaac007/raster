@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rgba } from '../core/color';
+import { selectionContains } from '../core/raster';
 import { createSprite } from '../core/sprite';
 import { Editor } from './editor';
 import { TOOL_BY_ID, type ToolEvent } from './tools';
@@ -299,6 +300,93 @@ describe('Editor selection', () => {
   });
 });
 
+describe('Editor lasso and magic wand', () => {
+  const BLUE = rgba(0, 0, 255);
+  const selected = (ed: Editor) => {
+    const sel = ed.getState().selection;
+    const out: string[] = [];
+    for (let y = 0; y < ed.sprite.height; y++) {
+      for (let x = 0; x < ed.sprite.width; x++) {
+        if (sel && selectionContains(sel, x, y)) out.push(`${x},${y}`);
+      }
+    }
+    return out;
+  };
+
+  it('selects the area inside a lasso path, and deselects on a click', () => {
+    const { ed } = setup();
+    const lasso = TOOL_BY_ID.lasso;
+    lasso.down(ed, at(1, 1));
+    lasso.move(ed, at(3, 1));
+    lasso.move(ed, at(3, 3));
+    lasso.up(ed, at(1, 3));
+    expect(ed.getState().selection).toEqual({ x: 1, y: 1, width: 3, height: 3 });
+    lasso.down(ed, at(6, 6));
+    lasso.up(ed, at(6, 6));
+    expect(ed.getState().selection).toBeNull();
+  });
+
+  it('adds with Shift and subtracts with Ctrl', () => {
+    const { ed } = setup();
+    const lasso = TOOL_BY_ID.lasso;
+    ed.select({ x: 0, y: 0, width: 2, height: 1 });
+    lasso.down(ed, at(4, 0, { shift: true }));
+    lasso.up(ed, at(5, 0, { shift: true }));
+    expect(selected(ed)).toEqual(['0,0', '1,0', '4,0', '5,0']);
+    lasso.down(ed, at(1, 0, { ctrl: true }));
+    lasso.up(ed, at(4, 0, { ctrl: true }));
+    expect(selected(ed)).toEqual(['0,0', '5,0']);
+  });
+
+  it('selects matching pixels with the magic wand', () => {
+    const { ed, drag } = setup(4, 4);
+    drag('pencil', [0, 0], [1, 0]);
+    drag('pencil', [3, 3], [3, 3]);
+    const wand = TOOL_BY_ID.wand;
+    wand.down(ed, at(0, 0));
+    wand.up(ed, at(0, 0));
+    expect(ed.getState().selection).toEqual({ x: 0, y: 0, width: 2, height: 1 });
+    ed.setOption({ wandContiguous: false });
+    wand.down(ed, at(0, 0));
+    wand.up(ed, at(0, 0));
+    expect(selected(ed)).toEqual(['0,0', '1,0', '3,3']);
+    ed.setOption({ wandContiguous: true });
+    wand.down(ed, at(3, 3, { ctrl: true }));
+    wand.up(ed, at(3, 3, { ctrl: true }));
+    expect(selected(ed)).toEqual(['0,0', '1,0']);
+  });
+
+  it('clips strokes to a masked selection', () => {
+    const { ed, px, drag } = setup(4, 4);
+    drag('pencil', [1, 1], [1, 1]);
+    ed.setOption({ wandContiguous: false });
+    ed.selectColor(1, 1);
+    ed.invertSelection();
+    ed.setPrimary(BLUE);
+    TOOL_BY_ID.fill.down(ed, at(0, 0));
+    expect([px(0, 0), px(1, 1), px(3, 3)]).toEqual([BLUE, RED, BLUE]);
+  });
+
+  it('moves only the masked pixels', () => {
+    const { ed, px, drag } = setup(4, 4);
+    drag('pencil', [0, 0], [1, 0]);
+    ed.setPrimary(BLUE);
+    drag('pencil', [0, 1], [1, 1]);
+    // Select the two red pixels plus (0, 1): an L-shaped mask.
+    ed.selectColor(0, 0);
+    ed.select({ x: 0, y: 1, width: 1, height: 1 }, 'add');
+    expect(ed.getState().selection?.mask).toBeDefined();
+    const wand = TOOL_BY_ID.wand;
+    wand.down(ed, at(0, 0));
+    wand.move(ed, at(2, 2));
+    wand.up(ed, at(2, 2));
+    ed.deselect();
+    expect([px(0, 0), px(1, 0), px(0, 1), px(1, 1)]).toEqual([0, 0, 0, BLUE]);
+    expect([px(2, 2), px(3, 2), px(2, 3), px(3, 3)]).toEqual([RED, RED, BLUE, 0]);
+    expect(ed.getState().undoLabel).toBe('Move');
+  });
+});
+
 describe('Editor frames', () => {
   it('adds frames with their own pixels and switches between them', () => {
     const { ed, px, drag } = setup();
@@ -383,6 +471,127 @@ describe('Editor frames', () => {
   });
 });
 
+describe('Editor linked cels', () => {
+  it('duplicates a frame with linked cels that share edits', () => {
+    const { ed, px, drag } = setup(4, 4);
+    ed.duplicateLinkedFrame();
+    expect(ed.getState().frame).toBe(1);
+    expect(ed.celLinked).toBe(true);
+    drag('pencil', [1, 1], [1, 1]);
+    ed.setFrame(0);
+    expect(px(1, 1)).toBe(RED);
+    ed.undo();
+    expect(ed.getState().frame).toBe(1);
+    expect(px(1, 1)).toBe(0);
+  });
+
+  it('unlinks a cel as one undo step', () => {
+    const { ed, px, drag } = setup(4, 4);
+    ed.duplicateLinkedFrame();
+    ed.unlinkCel();
+    expect(ed.celLinked).toBe(false);
+    drag('pencil', [2, 2], [2, 2]);
+    ed.setFrame(0);
+    expect(px(2, 2)).toBe(0);
+    ed.undo(); // pencil
+    ed.undo(); // unlink
+    expect(ed.getState().undoLabel).toBe('Duplicate Linked Frame');
+    expect(ed.celLinked).toBe(true);
+  });
+
+  it('keeps links through canvas resize, flips and merges', () => {
+    const { ed, drag } = setup(4, 4);
+    drag('pencil', [0, 0], [0, 0]);
+    ed.duplicateLinkedFrame();
+    ed.resizeCanvas(5, 5, 0, 0);
+    const cels = () => ed.sprite.layers[0].cels;
+    expect(cels()[1]).toBe(cels()[0]);
+    ed.flip('horizontal', 'sprite');
+    expect(cels()[0][4]).toBe(RED);
+    ed.addLayer();
+    ed.mergeDown();
+    expect(cels()[1]).toBe(cels()[0]);
+    expect(cels()[0][4]).toBe(RED);
+    ed.undo();
+    ed.undo();
+    expect(cels()[1]).toBe(cels()[0]);
+  });
+
+  it('unlinks merged frames when the upper layer differs', () => {
+    const { ed, drag } = setup(4, 4);
+    ed.duplicateLinkedFrame();
+    ed.addLayer();
+    drag('pencil', [3, 3], [3, 3]);
+    ed.mergeDown();
+    const cels = ed.sprite.layers[0].cels;
+    expect(cels[1]).not.toBe(cels[0]);
+    expect([cels[0][15], cels[1][15]]).toEqual([0, RED]);
+  });
+});
+
+describe('Editor tags', () => {
+  it('adds, edits and deletes tags with undo', () => {
+    const { ed } = setup();
+    ed.addFrame();
+    ed.addFrame();
+    ed.addTag({ name: 'walk', from: 0, to: 1 });
+    expect(ed.getState().tags).toEqual([{ name: 'walk', from: 0, to: 1 }]);
+    ed.updateTag(0, { name: 'run', to: 5 });
+    expect(ed.getState().tags).toEqual([{ name: 'run', from: 0, to: 2 }]);
+    ed.deleteTag(0);
+    expect(ed.getState().tags).toEqual([]);
+    ed.undo();
+    ed.undo();
+    expect(ed.getState().tags).toEqual([{ name: 'walk', from: 0, to: 1 }]);
+    expect(ed.getState().dirty).toBe(true);
+  });
+
+  it('defaults a new tag to the current frame', () => {
+    const { ed } = setup();
+    ed.addFrame();
+    ed.addTag();
+    expect(ed.getState().tags).toEqual([{ name: 'Tag 1', from: 1, to: 1 }]);
+  });
+
+  it('moves tags along when frames are added and deleted', () => {
+    const { ed } = setup();
+    ed.addFrame();
+    ed.addFrame();
+    ed.addTag({ name: 'end', from: 2, to: 2 });
+    ed.setFrame(0);
+    ed.addFrame();
+    expect(ed.getState().tags).toEqual([{ name: 'end', from: 3, to: 3 }]);
+    ed.setFrame(3);
+    ed.deleteFrame();
+    expect(ed.getState().tags).toEqual([]);
+    ed.undo();
+    expect(ed.getState().tags).toEqual([{ name: 'end', from: 3, to: 3 }]);
+    ed.undo();
+    expect(ed.getState().tags).toEqual([{ name: 'end', from: 2, to: 2 }]);
+  });
+
+  it('plays in a loop inside the tag playback starts in', () => {
+    const { ed } = setup();
+    ed.addFrame();
+    ed.addFrame();
+    ed.addFrame();
+    ed.addTag({ name: 'loop', from: 1, to: 2 });
+    ed.setFrame(1);
+    ed.setPlaying(true);
+    const seen = [1];
+    for (let i = 0; i < 4; i++) {
+      ed.advancePlayback();
+      seen.push(ed.getState().frame);
+    }
+    expect(seen).toEqual([1, 2, 1, 2, 1]);
+    ed.setPlaying(false);
+    ed.setFrame(3);
+    ed.setPlaying(true);
+    ed.advancePlayback();
+    expect(ed.getState().frame).toBe(0);
+  });
+});
+
 describe('Editor brushes', () => {
   it('dithers paint through a checkerboard at 50%', () => {
     const { ed, px, drag } = setup();
@@ -453,5 +662,89 @@ describe('Editor tile mode', () => {
     ed.setPrimary(0);
     TOOL_BY_ID.picker.down(ed, at(-1, -1));
     expect(ed.getState().primary).toBe(RED);
+  });
+});
+
+describe('Editor palette', () => {
+  const BLUE = rgba(0, 0, 255);
+  const GREEN = rgba(0, 255, 0);
+
+  it('swaps a palette color in every layer and frame, once per linked cel', () => {
+    const { ed, px, drag } = setup(4, 1);
+    ed.setPalette([RED, GREEN]);
+    drag('pencil', [0, 0], [1, 0]);
+    ed.duplicateLinkedFrame();
+    ed.addFrame();
+    drag('pencil', [3, 0], [3, 0]);
+    ed.addLayer();
+    drag('pencil', [2, 0], [2, 0]);
+    ed.updateLayer(ed.activeLayer.id, { locked: true });
+
+    ed.setPaletteColor(0, BLUE);
+    const s = ed.getState();
+    expect(s.palette).toEqual([BLUE, GREEN]);
+    expect(s.primary).toBe(BLUE);
+    expect(s.undoLabel).toBe('Swap Palette Color');
+    const [bottom, top] = ed.sprite.layers;
+    expect([...bottom.cels[0]]).toEqual([BLUE, BLUE, 0, 0]);
+    expect(bottom.cels[1]).toBe(bottom.cels[0]);
+    expect([...bottom.cels[2]]).toEqual([0, 0, 0, BLUE]);
+    expect(top.cels[2][2]).toBe(BLUE);
+
+    ed.undo();
+    expect(ed.getState().palette).toEqual([RED, GREEN]);
+    expect(ed.getState().primary).toBe(RED);
+    expect([...bottom.cels[0]]).toEqual([RED, RED, 0, 0]);
+    expect(px(2, 0)).toBe(RED);
+    ed.redo();
+    expect(px(2, 0)).toBe(BLUE);
+  });
+
+  it('snaps pixels and colors to the palette in indexed mode', () => {
+    const { ed, px, drag } = setup(3, 1);
+    ed.setPrimary(rgba(250, 10, 10));
+    drag('pencil', [0, 0], [0, 0]);
+    ed.setPrimary(rgba(10, 10, 240));
+    drag('pencil', [1, 0], [1, 0]);
+    ed.setPalette([RED, BLUE]);
+
+    ed.setIndexed(true);
+    expect(ed.getState().indexed).toBe(true);
+    expect([px(0, 0), px(1, 0), px(2, 0)]).toEqual([RED, BLUE, 0]);
+    expect(ed.getState().primary).toBe(BLUE);
+
+    ed.setPrimary(rgba(200, 0, 50));
+    expect(ed.getState().primary).toBe(RED);
+    ed.setPrimary(rgba(255, 0, 0, 128));
+    drag('pencil', [2, 0], [2, 0]);
+    expect(px(2, 0)).toBe(RED);
+
+    ed.undo();
+    ed.undo();
+    expect(ed.getState().indexed).toBe(false);
+    expect(px(0, 0)).toBe(rgba(250, 10, 10));
+  });
+
+  it('carries indexed pixels along with palette changes', () => {
+    const { ed, px, drag } = setup(2, 1);
+    ed.setPalette([RED, GREEN, BLUE]);
+    ed.setIndexed(true);
+    drag('pencil', [0, 0], [0, 0]);
+    ed.setPrimary(BLUE);
+    drag('pencil', [1, 0], [1, 0]);
+
+    ed.setPalette([GREEN, BLUE, RED]);
+    expect([px(0, 0), px(1, 0)]).toEqual([GREEN, RED]);
+    ed.setPalette([GREEN, BLUE]);
+    expect([px(0, 0), px(1, 0)]).toEqual([GREEN, GREEN]);
+  });
+
+  it('snaps pasted pixels in indexed mode', () => {
+    const { ed, px } = setup(1, 1);
+    ed.setPalette([RED, GREEN]);
+    ed.setIndexed(true);
+    ed.paste({ width: 1, height: 1, pixels: Uint32Array.of(rgba(20, 220, 20)) });
+    ed.settle();
+    expect(px(0, 0)).toBe(GREEN);
   });
 });

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { rgba } from './color';
 import {
+  celLinks,
+  cloneLayer,
   composite,
   copyRect,
   createLayer,
   createSprite,
   flipPixels,
+  mapCels,
   mergeInto,
   resizePixels,
   stamp,
+  uniqueCels,
   type Sprite,
 } from './sprite';
 
@@ -108,5 +112,41 @@ describe('copyRect and stamp', () => {
     expect([...dst.pixels]).toEqual([red, red]);
     stamp(dst, { width: 2, height: 1, pixels: Uint32Array.of(0, rgba(0, 0, 255)) }, 0, 0);
     expect([...dst.pixels]).toEqual([red, rgba(0, 0, 255)]);
+  });
+});
+
+describe('linked cels', () => {
+  it('reports which frames share a cel', () => {
+    const layer = createLayer(1, 1, 'a', 4);
+    layer.cels[2] = layer.cels[0];
+    layer.cels[3] = layer.cels[1];
+    expect(celLinks(layer.cels)).toEqual([0, 1, 0, 1]);
+  });
+
+  it('maps each shared cel once, keeping the links', () => {
+    const layer = createLayer(1, 1, 'a', 3);
+    layer.cels[1] = layer.cels[0];
+    let calls = 0;
+    const out = mapCels(layer.cels, (c) => (calls++, c.slice()));
+    expect(calls).toBe(2);
+    expect(out[1]).toBe(out[0]);
+    expect(out[0]).not.toBe(layer.cels[0]);
+  });
+
+  it('keeps links when a layer is cloned', () => {
+    const layer = createLayer(1, 1, 'a', 2);
+    layer.cels[1] = layer.cels[0];
+    const copy = cloneLayer(layer);
+    expect(copy.cels[1]).toBe(copy.cels[0]);
+    expect(copy.cels[0]).not.toBe(layer.cels[0]);
+  });
+});
+
+describe('uniqueCels', () => {
+  it('lists each buffer once, even when frames are linked', () => {
+    const s = createSprite(2, 1, 3);
+    s.layers[0].cels[2] = s.layers[0].cels[0];
+    s.layers.push(createLayer(2, 1, 'top', 3));
+    expect(uniqueCels(s)).toHaveLength(5);
   });
 });

@@ -22,6 +22,20 @@ export function rectContains(r: Rect, x: number, y: number): boolean {
   return x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
 }
 
+/**
+ * A selected area: its bounding rectangle, plus a mask when it isn't the
+ * whole rectangle (lasso, magic wand). `mask[row * width + col]` is 1 for
+ * selected pixels. Never mutated once created.
+ */
+export interface Selection extends Rect {
+  mask?: Uint8Array;
+}
+
+export function selectionContains(s: Selection, x: number, y: number): boolean {
+  if (!rectContains(s, x, y)) return false;
+  return !s.mask || s.mask[(y - s.y) * s.width + x - s.x] === 1;
+}
+
 /** The overlap of two rectangles, or null if they don't touch. */
 export function intersectRect(a: Rect, b: Rect): Rect | null {
   const x = Math.max(a.x, b.x);
@@ -171,15 +185,17 @@ export function floodRegion(
   x: number,
   y: number,
   contiguous = true,
-  bounds?: Rect,
+  bounds?: Selection,
 ): Uint32Array {
-  if (!inBounds(s, x, y) || (bounds && !rectContains(bounds, x, y))) return new Uint32Array(0);
+  if (!inBounds(s, x, y) || (bounds && !selectionContains(bounds, x, y))) {
+    return new Uint32Array(0);
+  }
   const { width: w, height: h, pixels } = s;
   const target = pixels[y * w + x];
   const inside = (i: number) => {
     if (!bounds) return true;
     const px = i % w;
-    return rectContains(bounds, px, (i - px) / w);
+    return selectionContains(bounds, px, (i - px) / w);
   };
 
   if (!contiguous) {

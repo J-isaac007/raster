@@ -32,6 +32,7 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
       '-',
       'edit.selectAll',
       'edit.deselect',
+      'edit.invertSelection',
       '-',
       'edit.clear',
       'edit.swap',
@@ -59,7 +60,11 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
     items: [
       'frame.new',
       'frame.duplicate',
+      'frame.duplicateLinked',
       'frame.delete',
+      '-',
+      'frame.unlink',
+      'frame.newTag',
       '-',
       'frame.moveLeft',
       'frame.moveRight',
@@ -92,7 +97,7 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
   },
   {
     label: 'Palette',
-    items: ['palette.import', 'palette.export'],
+    items: ['palette.editColor', 'palette.indexed', '-', 'palette.import', 'palette.export'],
   },
   {
     label: 'Help',

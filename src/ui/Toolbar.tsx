@@ -2,12 +2,14 @@ import {
   Circle,
   Contrast,
   Eraser,
+  LassoSelect,
   PaintBucket,
   Pencil,
   Pipette,
   Slash,
   Square,
   SquareDashed,
+  WandSparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { useEditor, useEditorState } from '../editor/context';
@@ -16,6 +18,8 @@ import { TOOLS } from '../editor/tools';
 
 const TOOL_ICONS: Record<ToolId, LucideIcon> = {
   select: SquareDashed,
+  lasso: LassoSelect,
+  wand: WandSparkles,
   pencil: Pencil,
   eraser: Eraser,
   shade: Contrast,

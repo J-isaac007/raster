@@ -1,15 +1,24 @@
 import { DITHER_LEVELS, ditherHit, shadeColor } from '../core/brush';
 import { blend, TRANSPARENT, type Color } from '../core/color';
 import { applyPatch, diffPixels } from '../core/history';
-import { floodRegion, inBounds, plotBrush, rectContains, type Rect } from '../core/raster';
+import {
+  floodRegion,
+  inBounds,
+  plotBrush,
+  selectionContains,
+  type Selection,
+} from '../core/raster';
 import type { Layer } from '../core/sprite';
 import type { EditorCore } from './core';
+import type { EditorPalette } from './palette';
 import type { EditorView } from './view';
 
 interface Stroke {
   layer: Layer;
   base: Uint32Array;
-  clip: Rect | null;
+  clip: Selection | null;
+  /** Snaps painted colors to the palette in indexed mode. */
+  snap: (c: Color) => Color;
 }
 
 /** Undoable pixel edits on the active layer, driven by the drawing tools. */
@@ -19,6 +28,7 @@ export class EditorStrokes {
   constructor(
     private readonly core: EditorCore,
     private readonly view: EditorView,
+    private readonly palette: EditorPalette,
   ) {}
 
   /**
@@ -29,7 +39,12 @@ export class EditorStrokes {
     this.core.settle();
     const layer = this.core.activeLayer;
     if (!this.core.canEdit(layer)) return false;
-    this.stroke = { layer, base: layer.pixels.slice(), clip: this.core.getState().selection };
+    this.stroke = {
+      layer,
+      base: layer.pixels.slice(),
+      clip: this.core.getState().selection,
+      snap: this.palette.snapper() ?? ((c) => c),
+    };
     return true;
   }
 
@@ -63,7 +78,7 @@ export class EditorStrokes {
     const { width: w, height: h } = this.core.sprite;
     const put = (px: number, py: number) => {
       [px, py] = this.view.wrap(px, py);
-      if (!inBounds(s.layer, px, py) || (s.clip && !rectContains(s.clip, px, py))) return;
+      if (!inBounds(s.layer, px, py) || (s.clip && !selectionContains(s.clip, px, py))) return;
       fn(py * w + px, px, py);
     };
     plotBrush(x, y, size, (px, py) => {
@@ -82,7 +97,7 @@ export class EditorStrokes {
     this.forDab(x, y, brushSize, (i, px, py) => {
       if (color !== null && dither < DITHER_LEVELS && !ditherHit(px, py, dither)) return;
       // Blend against the stroke's base so overlapping dabs don't stack alpha.
-      s.layer.pixels[i] = color === null ? TRANSPARENT : blend(s.base[i], color);
+      s.layer.pixels[i] = color === null ? TRANSPARENT : s.snap(blend(s.base[i], color));
     });
   }
 
@@ -98,7 +113,7 @@ export class EditorStrokes {
     if (!s) return;
     const { palette, brushSize } = this.core.getState();
     this.forDab(x, y, brushSize, (i) => {
-      s.layer.pixels[i] = shadeColor(s.base[i], palette, dir);
+      s.layer.pixels[i] = s.snap(shadeColor(s.base[i], palette, dir));
     });
   }
 
@@ -119,7 +134,7 @@ export class EditorStrokes {
       color !== null && dither < DITHER_LEVELS && !ditherHit(i % w, Math.floor(i / w), dither);
     for (const i of region) {
       if (skip(i)) continue;
-      s.layer.pixels[i] = color === null ? TRANSPARENT : blend(s.base[i], color);
+      s.layer.pixels[i] = color === null ? TRANSPARENT : s.snap(blend(s.base[i], color));
     }
   }
 

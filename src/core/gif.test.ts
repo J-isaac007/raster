@@ -98,5 +98,13 @@ describe('packSheet', () => {
     const meta = JSON.parse(sheetMetadata(sheet, 'hero.png', [100, 200, 300]));
     expect(meta.frames[1]).toMatchObject({ frame: { x: 3, y: 0, w: 2, h: 2 }, duration: 200 });
     expect(meta.meta.size).toEqual({ w: 5, h: 5 });
+    expect(meta.meta.frameTags).toEqual([]);
+
+    const tagged = sheetMetadata(sheet, 'hero.png', [100, 200, 300], undefined, [
+      { name: 'walk', from: 1, to: 2 },
+    ]);
+    expect(JSON.parse(tagged).meta.frameTags).toEqual([
+      { name: 'walk', from: 1, to: 2, direction: 'forward' },
+    ]);
   });
 });

@@ -1,13 +1,15 @@
 import { PixelPerfect } from '../core/brush';
 import type { Color } from '../core/color';
+import { combineSelections, polygonSelection, type Point, type SelectMode } from '../core/mask';
 import {
   plotEllipse,
   plotLine,
   plotRect,
-  rectContains,
   rectFromCorners,
+  selectionContains,
   snapAngle,
   snapSquare,
+  type Selection,
 } from '../core/raster';
 import type { Editor, ToolId } from './editor';
 
@@ -17,6 +19,8 @@ export interface ToolEvent {
   /** 0 = primary (left), 2 = secondary (right). */
   button: number;
   shift: boolean;
+  /** Ctrl (Cmd on macOS) held. */
+  ctrl?: boolean;
 }
 
 export interface Tool {
@@ -156,7 +160,7 @@ function selectTool(): Tool {
     down(ed, e) {
       dragged = false;
       const sel = ed.getState().selection;
-      if (sel && rectContains(sel, e.x, e.y) && ed.liftSelection()) {
+      if (sel && selectionContains(sel, e.x, e.y) && ed.liftSelection()) {
         grab = { dx: e.x - sel.x, dy: e.y - sel.y };
         return;
       }
@@ -173,8 +177,103 @@ function selectTool(): Tool {
   };
 }
 
+/** Lasso and magic wand: Shift adds to the selection, Ctrl subtracts from it. */
+const selectMode = (e: ToolEvent): SelectMode =>
+  e.ctrl ? 'subtract' : e.shift ? 'add' : 'replace';
+
+/**
+ * Starts moving the selected pixels if a plain press lands inside the
+ * selection. Returns the grab offset, or null.
+ */
+function grabSelection(ed: Editor, e: ToolEvent): { dx: number; dy: number } | null {
+  const sel = ed.getState().selection;
+  if (selectMode(e) !== 'replace' || !sel || !selectionContains(sel, e.x, e.y)) return null;
+  return ed.liftSelection() ? { dx: e.x - sel.x, dy: e.y - sel.y } : null;
+}
+
+/**
+ * Freehand lasso: drag around an area to select it; the path closes itself.
+ * Dragging inside the selection moves its pixels; a click deselects.
+ */
+function lassoTool(): Tool {
+  let points: Point[] | null = null;
+  let base: Selection | null = null;
+  let mode: SelectMode = 'replace';
+  let grab: { dx: number; dy: number } | null = null;
+  const update = (ed: Editor) => {
+    const { width, height } = ed.sprite;
+    const path = polygonSelection(points!, width, height);
+    ed.select(combineSelections(base, path, mode, width, height));
+  };
+  const drag = (ed: Editor, e: ToolEvent) => {
+    if (grab) {
+      ed.moveFloating(e.x - grab.dx, e.y - grab.dy);
+      return;
+    }
+    const last = points?.[points.length - 1];
+    if (!points || !last || (last.x === e.x && last.y === e.y)) return;
+    points.push({ x: e.x, y: e.y });
+    update(ed);
+  };
+  return {
+    id: 'lasso',
+    label: 'Lasso',
+    shortcut: 'Q',
+    down(ed, e) {
+      grab = grabSelection(ed, e);
+      if (grab) return;
+      ed.settle();
+      mode = selectMode(e);
+      base = ed.getState().selection;
+      points = [{ x: e.x, y: e.y }];
+    },
+    move: drag,
+    up(ed, e) {
+      drag(ed, e);
+      if (points?.length === 1 && mode === 'replace') ed.deselect();
+      points = null;
+      base = null;
+      grab = null;
+    },
+  };
+}
+
+/**
+ * Magic wand: click to select pixels of the same color on the active layer.
+ * Dragging inside the selection moves its pixels.
+ */
+function wandTool(): Tool {
+  let grab: { dx: number; dy: number } | null = null;
+  let dragged = false;
+  const drag = (ed: Editor, e: ToolEvent) => {
+    const sel = ed.getState().selection;
+    if (!grab || !sel || (e.x - grab.dx === sel.x && e.y - grab.dy === sel.y)) return;
+    dragged = true;
+    ed.moveFloating(e.x - grab.dx, e.y - grab.dy);
+  };
+  return {
+    id: 'wand',
+    label: 'Magic Wand',
+    shortcut: 'W',
+    down(ed, e) {
+      dragged = false;
+      grab = grabSelection(ed, e);
+      if (!grab) ed.selectColor(e.x, e.y, selectMode(e));
+    },
+    move: drag,
+    up(ed, e) {
+      drag(ed, e);
+      // A click inside the selection picks a new region.
+      if (grab && !dragged) ed.selectColor(e.x, e.y);
+      grab = null;
+    },
+  };
+}
+
 export const TOOLS: Tool[] = [
   selectTool(),
+  lassoTool(),
+  wandTool(),
   freehand('pencil', 'Pencil', 'B', 'paint'),
   freehand('eraser', 'Eraser', 'E', 'erase'),
   freehand('shade', 'Shade', 'D', 'shade'),

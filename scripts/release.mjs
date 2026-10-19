@@ -3,7 +3,7 @@
 // It does not touch git; it prints the commands to run when you're ready.
 //
 //   npm run release -- patch | minor | major | 1.2.3
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const arg = process.argv[2];
@@ -37,14 +37,15 @@ if (changelog.includes(`## [${version}]`)) {
 }
 
 if (version !== current) {
-  // `npm` is a .cmd shim on Windows, so it needs a shell there.
-  execFileSync('npm', ['version', version, '--no-git-tag-version'], {
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
+  // `npm` is a .cmd shim on Windows, so it runs through a shell. `version` is
+  // checked to be x.y.z above, so the command string is safe to build.
+  execSync(`npm version ${version} --no-git-tag-version`, { stdio: 'inherit' });
 }
 
-const date = new Date().toISOString().slice(0, 10);
+// The release date in the maintainer's own time zone, not UTC.
+const now = new Date();
+const pad = (n) => String(n).padStart(2, '0');
+const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 writeFileSync(
   'CHANGELOG.md',
   changelog.replace('## [Unreleased]\n', `## [Unreleased]\n\n## [${version}] - ${date}\n`),

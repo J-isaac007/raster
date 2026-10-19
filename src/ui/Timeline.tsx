@@ -3,17 +3,24 @@ import {
   ChevronRight,
   Copy,
   Layers2,
+  Link,
   Pause,
   Play,
   Plus,
   SkipBack,
   SkipForward,
+  Tag as TagIcon,
   Trash,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { celLinks } from '../core/sprite';
 import { useEditor, useEditorState } from '../editor/context';
+import { TagDialog } from './Dialogs';
 
 const THUMB = 44;
+/** Frame button width plus the gap between frames (see `.frame` in styles.css). */
+const FRAME_STRIDE = 60;
+const TAG_COLORS = ['#5b8cff', '#ff9f43', '#2ed47a', '#e056fd', '#ff6b7a', '#00d2d3'];
 
 function FrameThumb({ index }: { index: number }) {
   const editor = useEditor();
@@ -101,7 +108,7 @@ function usePlayback() {
     const tick = () => {
       const { frame, frames } = editor.getState();
       timer = setTimeout(() => {
-        editor.nextFrame();
+        editor.advancePlayback();
         tick();
       }, frames[frame]);
     };
@@ -112,14 +119,19 @@ function usePlayback() {
 
 export function Timeline() {
   const editor = useEditor();
-  const { frame, frames, playing, onionSkin } = useEditorState((s) => ({
+  const { frame, frames, tags, playing, onionSkin } = useEditorState((s) => ({
     frame: s.frame,
     frames: s.frames,
+    tags: s.tags,
     playing: s.playing,
     onionSkin: s.onionSkin,
   }));
+  // Frames whose cel (on the active layer) is shared with another frame.
+  const links = useEditorState(() => celLinks(editor.activeLayer.cels));
+  const [editingTag, setEditingTag] = useState<number | 'new' | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   usePlayback();
+  const linked = (i: number) => links[i] !== i || links.indexOf(i, i + 1) > 0;
 
   useEffect(() => {
     const el = stripRef.current?.children[frame] as HTMLElement | undefined;
@@ -211,6 +223,14 @@ export function Timeline() {
           </button>
           <button
             className="icon-btn"
+            title="New tag (Alt+T)"
+            aria-label="New tag"
+            onClick={() => setEditingTag('new')}
+          >
+            <TagIcon size={13} />
+          </button>
+          <button
+            className="icon-btn"
             title="Onion skin (Shift+O)"
             aria-label="Onion skin"
             aria-pressed={onionSkin}
@@ -228,21 +248,53 @@ export function Timeline() {
         </span>
       </div>
 
-      <div className="frames" ref={stripRef} role="listbox" aria-label="Frames">
-        {frames.map((ms, i) => (
-          <button
-            key={i}
-            className="frame"
-            role="option"
-            aria-selected={i === frame}
-            title={`Frame ${i + 1} · ${ms} ms`}
-            onClick={() => editor.setFrame(i)}
-          >
-            <FrameThumb index={i} />
-            <span className="frame-label">{i + 1}</span>
-          </button>
-        ))}
+      <div className="frames">
+        {tags.length > 0 && (
+          <div className="tag-row" style={{ width: frames.length * FRAME_STRIDE }}>
+            {tags.map((t, i) => (
+              <button
+                key={i}
+                className="tag"
+                title={`${t.name} · frames ${t.from + 1}–${t.to + 1} (click to edit)`}
+                style={{
+                  left: t.from * FRAME_STRIDE,
+                  width: (t.to - t.from + 1) * FRAME_STRIDE - 4,
+                  background: TAG_COLORS[i % TAG_COLORS.length],
+                }}
+                onClick={() => setEditingTag(i)}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="frame-row" ref={stripRef} role="listbox" aria-label="Frames">
+          {frames.map((ms, i) => (
+            <button
+              key={i}
+              className="frame"
+              role="option"
+              aria-selected={i === frame}
+              title={`Frame ${i + 1} · ${ms} ms${linked(i) ? ' · linked cel' : ''}`}
+              onClick={() => editor.setFrame(i)}
+            >
+              <FrameThumb index={i} />
+              {linked(i) && (
+                <span className="frame-link" aria-label="Linked cel">
+                  <Link size={10} />
+                </span>
+              )}
+              <span className="frame-label">{i + 1}</span>
+            </button>
+          ))}
+        </div>
       </div>
+      {editingTag !== null && (
+        <TagDialog
+          index={editingTag === 'new' ? null : editingTag}
+          onClose={() => setEditingTag(null)}
+        />
+      )}
     </section>
   );
 }

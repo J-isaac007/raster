@@ -1,4 +1,5 @@
 import type { Surface } from './sprite';
+import type { Tag } from './tags';
 
 export interface SheetOptions {
   /** Frames per row. Defaults to a roughly square grid. */
@@ -70,13 +71,15 @@ export function packSheet(
 
 /**
  * JSON metadata in the widely supported "array" layout (as written by
- * Aseprite and TexturePacker), so game engines can slice the sheet.
+ * Aseprite and TexturePacker), so game engines can slice the sheet. Tags are
+ * written as Aseprite-style `frameTags`.
  */
 export function sheetMetadata(
   sheet: SheetLayout,
   imageName: string,
   durationsMs: number[],
   frameName = (i: number) => `${i}`,
+  tags: readonly Tag[] = [],
 ): string {
   return JSON.stringify(
     {
@@ -95,6 +98,7 @@ export function sheetMetadata(
         format: 'RGBA8888',
         size: { w: sheet.width, h: sheet.height },
         scale: '1',
+        frameTags: tags.map(({ name, from, to }) => ({ name, from, to, direction: 'forward' })),
       },
     },
     null,

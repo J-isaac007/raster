@@ -12,6 +12,7 @@ const restored = loadAutosave();
 if (restored) {
   editor.load(restored.sprite, {
     palette: restored.palette,
+    indexed: restored.indexed,
     fileName: restored.fileName,
     dirty: restored.dirty,
   });

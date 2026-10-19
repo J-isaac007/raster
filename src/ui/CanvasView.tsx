@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { rectContains } from '../core/raster';
+import { selectionOutline, type Edge } from '../core/mask';
+import { selectionContains, type Selection } from '../core/raster';
 import { composite } from '../core/sprite';
 import { useEditor } from '../editor/context';
 import { TOOL_BY_ID, type Tool } from '../editor/tools';
@@ -27,6 +28,7 @@ function tintInto(src: Uint32Array, out: Uint32Array, [tr, tg, tb]: readonly num
 const WHEEL_STEP = 60;
 /** Marching ants advance one device pixel per this many milliseconds. */
 const ANTS_MS = 60;
+const SELECTION_TOOLS = new Set(['select', 'lasso', 'wand']);
 
 function makeChecker(ctx: CanvasRenderingContext2D, dpr: number): CanvasPattern {
   const cell = Math.round(CHECKER_SIZE * dpr);
@@ -40,6 +42,8 @@ function makeChecker(ctx: CanvasRenderingContext2D, dpr: number): CanvasPattern 
   t.fillRect(0, cell, cell, cell);
   return ctx.createPattern(tile, 'repeat')!;
 }
+
+const modifiers = (e: PointerEvent) => ({ shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey });
 
 type Gesture =
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
@@ -75,6 +79,8 @@ export function CanvasView() {
     let wheelAccum = 0;
     let fitted = false;
     let antsTimer = 0;
+    /** Outline of the last drawn selection; recomputed when it changes. */
+    let outline: { selection: Selection | null; edges: Edge[] } = { selection: null, edges: [] };
 
     const draw = () => {
       frame = 0;
@@ -241,20 +247,27 @@ export function CanvasView() {
 
       // Marching ants around the selection.
       if (s.selection) {
-        const sel = s.selection;
-        const sx = Math.round(ox + sel.x * z) + 0.5;
-        const sy = Math.round(oy + sel.y * z) + 0.5;
-        const sw = Math.round(sel.width * z) - 1;
-        const sh = Math.round(sel.height * z) - 1;
+        if (outline.selection !== s.selection) {
+          outline = { selection: s.selection, edges: selectionOutline(s.selection) };
+        }
+        // Edges sit on pixel boundaries; nudge the far ones inside so the
+        // outline lines up with the art at every zoom.
+        const ex = (x: number) => Math.round(ox + x * z) + (x === s.selection!.x ? 0.5 : -0.5);
+        const ey = (y: number) => Math.round(oy + y * z) + (y === s.selection!.y ? 0.5 : -0.5);
+        ctx.beginPath();
+        for (const [x0, y0, x1, y1] of outline.edges) {
+          ctx.moveTo(ex(x0), ey(y0));
+          ctx.lineTo(ex(x1), ey(y1));
+        }
         const dash = 4 * dpr;
         ctx.save();
         ctx.lineWidth = Math.max(1, Math.floor(dpr));
         ctx.strokeStyle = '#fff';
-        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.stroke();
         ctx.setLineDash([dash, dash]);
         ctx.lineDashOffset = -((performance.now() / ANTS_MS) % (dash * 2));
         ctx.strokeStyle = '#000';
-        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.stroke();
         ctx.restore();
         if (!antsTimer) {
           antsTimer = window.setTimeout(() => {
@@ -265,13 +278,13 @@ export function CanvasView() {
       }
 
       const hoverSelection =
-        s.tool === 'select' &&
+        SELECTION_TOOLS.has(s.tool) &&
         s.cursor &&
         s.selection &&
-        rectContains(s.selection, s.cursor.x, s.cursor.y);
+        selectionContains(s.selection, s.cursor.x, s.cursor.y);
 
       // Brush footprint under the cursor.
-      if (s.cursor && !s.panning && gesture?.kind !== 'pan' && s.tool !== 'select') {
+      if (s.cursor && !s.panning && gesture?.kind !== 'pan' && !SELECTION_TOOLS.has(s.tool)) {
         const size = s.tool === 'fill' || s.tool === 'picker' ? 1 : s.brushSize;
         const start = -Math.floor((size - 1) / 2);
         const bx = Math.round(ox + (s.cursor.x + start) * z) + 0.5;
@@ -340,7 +353,7 @@ export function CanvasView() {
       if (e.button !== 0 && e.button !== 2) return;
       const tool = e.altKey ? TOOL_BY_ID.picker : TOOL_BY_ID[editor.getState().tool];
       gesture = { kind: 'tool', pointerId: e.pointerId, tool, button: e.button };
-      tool.down(editor, { x: p.x, y: p.y, button: e.button, shift: e.shiftKey });
+      tool.down(editor, { x: p.x, y: p.y, button: e.button, ...modifiers(e) });
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -353,7 +366,7 @@ export function CanvasView() {
         gesture.lastX = e.clientX;
         gesture.lastY = e.clientY;
       } else {
-        gesture.tool.move(editor, { x: p.x, y: p.y, button: gesture.button, shift: e.shiftKey });
+        gesture.tool.move(editor, { x: p.x, y: p.y, button: gesture.button, ...modifiers(e) });
       }
     };
 
@@ -361,7 +374,7 @@ export function CanvasView() {
       if (!gesture || gesture.pointerId !== e.pointerId) return;
       if (gesture.kind === 'tool') {
         const p = locate(e);
-        gesture.tool.up(editor, { x: p.x, y: p.y, button: gesture.button, shift: e.shiftKey });
+        gesture.tool.up(editor, { x: p.x, y: p.y, button: gesture.button, ...modifiers(e) });
       }
       gesture = null;
       schedule();

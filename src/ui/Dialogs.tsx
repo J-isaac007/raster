@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { alpha, fromHex, toHex, withAlpha } from '../core/color';
 import { encodeGif } from '../core/gif';
 import { layoutSheet, packSheet, sheetMetadata } from '../core/sheet';
 import { MAX_SPRITE_SIZE } from '../core/sprite';
+import { MAX_TAG_NAME } from '../core/tags';
 import { formatKeys, type Action } from '../editor/actions';
 import { useEditor, useEditorState } from '../editor/context';
+import { Swatch } from './ColorPanel';
 import { Logo } from './Logo';
 import type { Editor, TileMode } from '../editor/editor';
-import {
-  baseName,
-  canvasToPng,
-  downloadBlob,
-  forgetFileHandle,
-  pixelsToCanvas,
-} from '../editor/io';
+import { baseName, downloadBlob, forgetFileHandle } from '../editor/files';
+import { canvasToPng, pixelsToCanvas } from '../editor/image';
 
 function Dialog({
   title,
@@ -213,17 +211,19 @@ interface ExportSettings {
   scale: number;
   columns: number;
   padding: number;
+  /** Indices of the frames to export (GIF and sprite sheet). */
+  frames: number[];
 }
 
-const allFrames = (editor: Editor) =>
-  Array.from({ length: editor.frameCount }, (_, i) => editor.flattenFrame(i));
+const flattenFrames = (editor: Editor, frames: number[]) =>
+  frames.map((i) => editor.flattenFrame(i));
 
-function renderGif(editor: Editor, scale: number): Uint8Array {
-  const { width, height, frames } = editor.getState();
+function renderGif(editor: Editor, scale: number, frames: number[]): Uint8Array {
+  const { width, height, frames: durations } = editor.getState();
   return encodeGif(
     width,
     height,
-    allFrames(editor).map((pixels, i) => ({ pixels, delayMs: frames[i] })),
+    flattenFrames(editor, frames).map((pixels, i) => ({ pixels, delayMs: durations[frames[i]] })),
     { scale },
   );
 }
@@ -240,7 +240,7 @@ function gifDataUrl(bytes: Uint8Array): string {
 function renderCanvas(editor: Editor, o: ExportSettings): HTMLCanvasElement {
   const { width, height, frame } = editor.getState();
   if (o.format === 'sheet') {
-    const sheet = packSheet(allFrames(editor), width, height, {
+    const sheet = packSheet(flattenFrames(editor, o.frames), width, height, {
       columns: o.columns,
       padding: o.padding,
     });
@@ -252,8 +252,17 @@ function renderCanvas(editor: Editor, o: ExportSettings): HTMLCanvasElement {
 export function ExportDialog({ onClose }: { onClose: () => void }) {
   const editor = useEditor();
   const s = editor.getState();
-  const frameCount = s.frames.length;
-  const [format, setFormat] = useState<ExportFormat>(frameCount > 1 ? 'gif' : 'png');
+  const [range, setRange] = useState(-1);
+  const tag = s.tags[range] ?? null;
+  const frames = useMemo(
+    () =>
+      tag
+        ? Array.from({ length: tag.to - tag.from + 1 }, (_, i) => tag.from + i)
+        : s.frames.map((_, i) => i),
+    [tag, s.frames],
+  );
+  const frameCount = frames.length;
+  const [format, setFormat] = useState<ExportFormat>(s.frames.length > 1 ? 'gif' : 'png');
   const [scale, setScale] = useState(() =>
     Math.max(1, Math.min(16, Math.floor(512 / Math.max(s.width, s.height)))),
   );
@@ -272,17 +281,17 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
 
   // Preview at 1× (GIF previews animate).
   const preview = useMemo(() => {
-    if (format === 'gif') return gifDataUrl(renderGif(editor, 1));
-    return renderCanvas(editor, { format, scale: 1, columns: cols, padding }).toDataURL();
-  }, [editor, format, cols, padding]);
+    if (format === 'gif') return gifDataUrl(renderGif(editor, 1, frames));
+    return renderCanvas(editor, { format, scale: 1, columns: cols, padding, frames }).toDataURL();
+  }, [editor, format, cols, padding, frames]);
 
   const run = async () => {
     setBusy(true);
     const file = baseName(name.trim() || 'sprite');
-    const settings = { format, scale, columns: cols, padding };
+    const settings = { format, scale, columns: cols, padding, frames };
     try {
       if (format === 'gif') {
-        const bytes = renderGif(editor, scale);
+        const bytes = renderGif(editor, scale, frames);
         downloadBlob(new Blob([bytes as BlobPart], { type: 'image/gif' }), `${file}.gif`);
       } else {
         downloadBlob(await canvasToPng(renderCanvas(editor, settings)), `${file}.png`);
@@ -291,7 +300,13 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             columns: cols,
             padding: padding * scale,
           });
-          const meta = sheetMetadata(layout, `${file}.png`, s.frames, (i) => `${file} ${i}`);
+          const meta = sheetMetadata(
+            layout,
+            `${file}.png`,
+            frames.map((i) => s.frames[i]),
+            (i) => `${file} ${i}`,
+            tag ? [{ ...tag, from: 0, to: frameCount - 1 }] : s.tags,
+          );
           downloadBlob(new Blob([meta], { type: 'application/json' }), `${file}.json`);
         }
       }
@@ -346,6 +361,24 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
+          {format !== 'png' && s.tags.length > 0 && (
+            <>
+              <span className="hint">Frames</span>
+              <div className="chips">
+                {[-1, ...s.tags.keys()].map((i) => (
+                  <button
+                    type="button"
+                    key={i}
+                    className="chip"
+                    aria-pressed={range === i}
+                    onClick={() => setRange(i)}
+                  >
+                    {i < 0 ? 'All' : s.tags[i].name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <label htmlFor="export-name">File name</label>
           <input
             id="export-name"
@@ -422,6 +455,161 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           </button>
           <button type="submit" className="btn primary" disabled={busy}>
             Export
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** Creates a tag (`index` null) or edits one. Frames show 1-based. */
+export function TagDialog({ index, onClose }: { index: number | null; onClose: () => void }) {
+  const editor = useEditor();
+  const s = editor.getState();
+  const existing = index === null ? null : s.tags[index];
+  const [name, setName] = useState(existing?.name ?? `Tag ${s.tags.length + 1}`);
+  const [from, setFrom] = useState((existing?.from ?? s.frame) + 1);
+  const [to, setTo] = useState((existing?.to ?? s.frame) + 1);
+  const count = s.frames.length;
+
+  const save = () => {
+    const tag = { name, from: from - 1, to: to - 1 };
+    if (index === null) editor.addTag(tag);
+    else editor.updateTag(index, tag);
+    onClose();
+  };
+
+  return (
+    <Dialog title={index === null ? 'New Tag' : 'Edit Tag'} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <div className="form-grid">
+          <label htmlFor="tag-name">Name</label>
+          <input
+            id="tag-name"
+            className="text-input"
+            maxLength={MAX_TAG_NAME}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <label htmlFor="tag-from">From frame</label>
+          <input
+            id="tag-from"
+            className="text-input"
+            type="number"
+            min={1}
+            max={count}
+            value={from}
+            onChange={(e) => setFrom(+e.target.value)}
+          />
+          <label htmlFor="tag-to">To frame</label>
+          <input
+            id="tag-to"
+            className="text-input"
+            type="number"
+            min={1}
+            max={count}
+            value={to}
+            onChange={(e) => setTo(+e.target.value)}
+          />
+        </div>
+        <p className="hint" style={{ marginTop: 12 }}>
+          Playback loops inside the tag of the frame it starts on. Tags are saved with the project
+          and exported with sprite sheets.
+        </p>
+        <div className="dialog-actions">
+          {index !== null && (
+            <button
+              type="button"
+              className="btn"
+              style={{ marginRight: 'auto' }}
+              onClick={() => {
+                editor.deleteTag(index);
+                onClose();
+              }}
+            >
+              Delete
+            </button>
+          )}
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn primary">
+            {index === null ? 'Add' : 'Save'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+export function PaletteColorDialog({ index, onClose }: { index: number; onClose: () => void }) {
+  const editor = useEditor();
+  const { palette, indexed } = editor.getState();
+  const old = palette[index];
+  const [hex, setHex] = useState(old === undefined ? '#000000' : toHex(old));
+  const color = fromHex(hex);
+
+  if (old === undefined) return null;
+  const save = () => {
+    if (color === null) return;
+    editor.setPaletteColor(index, color);
+    onClose();
+  };
+
+  return (
+    <Dialog title="Swap Palette Color" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <div className="form-grid">
+          <span className="hint">From</span>
+          <div className="field-row">
+            <span className="color-preview">
+              <Swatch color={old} />
+            </span>
+            <span style={{ fontFamily: 'var(--mono)' }}>{toHex(old)}</span>
+          </div>
+          <label htmlFor="palette-hex">To</label>
+          <div className="field-row">
+            <input
+              type="color"
+              className="native-color"
+              aria-label="Pick color"
+              value={toHex(color ?? old, false)}
+              onChange={(e) =>
+                setHex(toHex(withAlpha(fromHex(e.target.value)!, alpha(color ?? old))))
+              }
+            />
+            <input
+              id="palette-hex"
+              className="text-input mono"
+              aria-invalid={color === null}
+              spellCheck={false}
+              value={hex}
+              onChange={(e) => setHex(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="hint" style={{ marginTop: 12 }}>
+          {indexed
+            ? 'Every pixel using this palette entry changes to the new color.'
+            : `Every ${toHex(old)} pixel changes to the new color.`}{' '}
+          This covers all layers and frames, and undoes in one step.
+        </p>
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn primary" disabled={color === null}>
+            Swap
           </button>
         </div>
       </form>
@@ -534,7 +722,8 @@ const EXTRA_SHORTCUTS: [string, string][] = [
   ['Straight line from last point', 'Shift + click'],
   ['Snap line / square shape', 'Hold Shift'],
   ['Paint with secondary color', 'Right click'],
-  ['Move selection', 'Drag inside it (select tool)'],
+  ['Move selection', 'Drag inside it (selection tools)'],
+  ['Add to / subtract from selection', 'Shift / Ctrl + lasso or wand'],
 ];
 
 export function ShortcutsDialog({ onClose, actions }: { onClose: () => void; actions: Action[] }) {

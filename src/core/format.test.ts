@@ -27,6 +27,62 @@ describe('.raster format', () => {
     expect([...loaded.sprite.layers[1].pixels]).toEqual([...top.pixels]);
   });
 
+  it('saves linked cels once and keeps them linked', () => {
+    const sprite = createSprite(1, 1, 3);
+    const layer = sprite.layers[0];
+    layer.cels[2] = layer.cels[0];
+    layer.cels[0][0] = rgba(9, 9, 9);
+    const text = serializeProject({ sprite, palette: [] });
+    expect(JSON.parse(text).layers[0].cels[2]).toEqual({ link: 0 });
+
+    const loaded = parseProject(text).sprite.layers[0];
+    expect(loaded.cels[2]).toBe(loaded.cels[0]);
+    expect(loaded.cels[1]).not.toBe(loaded.cels[0]);
+    expect(loaded.cels[2][0]).toBe(rgba(9, 9, 9));
+    expect(loaded.pixels).toBe(loaded.cels[0]);
+  });
+
+  it('round-trips tags and drops broken ones', () => {
+    const sprite = createSprite(1, 1, 4);
+    sprite.tags = [{ name: 'walk', from: 1, to: 3 }];
+    expect(parseProject(serializeProject({ sprite, palette: [] })).sprite.tags).toEqual([
+      { name: 'walk', from: 1, to: 3 },
+    ]);
+
+    const json = JSON.parse(serializeProject({ sprite, palette: [] }));
+    json.tags = [{ name: 'far', from: 2, to: 99 }, { name: 'bad' }];
+    expect(parseProject(JSON.stringify(json)).sprite.tags).toEqual([
+      { name: 'far', from: 2, to: 3 },
+    ]);
+  });
+
+  it('reads version 2 files, which have no tags or links', () => {
+    const json = JSON.parse(serializeProject({ sprite: createSprite(1, 1, 2), palette: [] }));
+    json.version = 2;
+    delete json.tags;
+    const { sprite } = parseProject(JSON.stringify(json));
+    expect(sprite.tags).toEqual([]);
+    expect(sprite.layers[0].cels[1]).not.toBe(sprite.layers[0].cels[0]);
+  });
+
+  it('round-trips indexed color mode and reads older files as RGB', () => {
+    const sprite = createSprite(1, 1);
+    expect(parseProject(serializeProject({ sprite, palette: [], indexed: true })).indexed).toBe(
+      true,
+    );
+    const json = JSON.parse(serializeProject({ sprite, palette: [] }));
+    expect(json.colorMode).toBe('rgb');
+    json.version = 3;
+    delete json.colorMode;
+    expect(parseProject(JSON.stringify(json)).indexed).toBe(false);
+  });
+
+  it('rejects links to the same or a later frame', () => {
+    const json = JSON.parse(serializeProject({ sprite: createSprite(1, 1, 2), palette: [] }));
+    json.layers[0].cels[0] = { link: 1 };
+    expect(() => parseProject(JSON.stringify(json))).toThrow(/cel link/);
+  });
+
   it('rejects bad input with a FormatError', () => {
     expect(() => parseProject('nope')).toThrow(FormatError);
     expect(() => parseProject('{"format":"other"}')).toThrow(FormatError);

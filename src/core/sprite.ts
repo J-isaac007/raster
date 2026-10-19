@@ -1,5 +1,6 @@
 import { blend, type Color } from './color';
 import type { Rect } from './raster';
+import type { Tag } from './tags';
 
 export const MAX_SPRITE_SIZE = 2048;
 
@@ -14,6 +15,9 @@ export interface Surface {
  * A layer holds one pixel buffer ("cel") per animation frame. `pixels` always
  * points at the cel of the frame being viewed (see `showFrame`), so code that
  * edits the current image never needs to know about frames.
+ *
+ * Frames can share a buffer: such "linked" cels are the same image, so
+ * editing one edits them all.
  */
 export interface Layer extends Surface {
   id: string;
@@ -39,6 +43,8 @@ export interface Sprite {
   /** Bottom to top. */
   layers: Layer[];
   frames: Frame[];
+  /** Named frame ranges (animation loops). */
+  tags: Tag[];
 }
 
 let idCounter = 0;
@@ -76,11 +82,42 @@ export function createSprite(width: number, height: number, frameCount = 1): Spr
     height,
     layers: [createLayer(width, height, 'Layer 1', frameCount)],
     frames: Array.from({ length: frameCount }, () => ({ duration: DEFAULT_FRAME_MS })),
+    tags: [],
   };
 }
 
+/**
+ * Maps each distinct cel through `fn` once, so frames that shared a buffer
+ * share the result too.
+ */
+export function mapCels(
+  cels: readonly Uint32Array[],
+  fn: (cel: Uint32Array, frame: number) => Uint32Array,
+): Uint32Array[] {
+  const done = new Map<Uint32Array, Uint32Array>();
+  return cels.map((cel, f) => {
+    let out = done.get(cel);
+    if (!out) done.set(cel, (out = fn(cel, f)));
+    return out;
+  });
+}
+
+/** For each frame, the first frame whose cel is the same buffer (itself if not linked). */
+export function celLinks(cels: readonly Uint32Array[]): number[] {
+  const first = new Map<Uint32Array, number>();
+  return cels.map((cel, f) => {
+    if (!first.has(cel)) first.set(cel, f);
+    return first.get(cel)!;
+  });
+}
+
+/** Every distinct cel buffer in the sprite, each once even when linked. */
+export function uniqueCels(sprite: Sprite): Uint32Array[] {
+  return [...new Set(sprite.layers.flatMap((l) => l.cels))];
+}
+
 export function cloneLayer(layer: Layer, name = `${layer.name} copy`): Layer {
-  const cels = layer.cels.map((c) => c.slice());
+  const cels = mapCels(layer.cels, (c) => c.slice());
   const current = layer.cels.indexOf(layer.pixels);
   return { ...layer, id: newId(), name, cels, pixels: cels[Math.max(0, current)] };
 }

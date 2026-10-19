@@ -6,6 +6,38 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
+### Added
+
+- Lasso (`Q`) and magic wand (`W`) selection. Hold `Shift` to add to the
+  selection or `Ctrl` to subtract from it. The wand can select one connected
+  area or every pixel of a color.
+- Edit › Invert Selection (`Ctrl+Shift+I`).
+- Animation tags: name a range of frames (`Alt+T`, or the tag button in the
+  timeline). Playback loops inside the tag it starts in. Tags are saved, and
+  GIF and sprite sheet exports can export one tag; sprite sheet JSON lists
+  them as `frameTags`.
+- Linked cels: Frame › Duplicate Linked Frame (`Shift+Alt+D`) adds a frame
+  that shares its images with the current one, so drawing on either changes
+  both. Frame › Unlink Cel gives a frame its own copy again. Linked frames
+  show a link mark in the timeline.
+- Palette swapping: double-click a palette color (or Palette › Swap Palette
+  Color…) to change it, and every pixel of that color changes with it, in all
+  layers and frames, as one undo step.
+- Indexed color mode (`Shift+I`, or the Indexed button on the palette). It
+  snaps every pixel and drawing color to the nearest palette color and keeps
+  them there. In indexed mode, picking a preset or loading a palette of the
+  same size swaps colors by position; removing a color moves its pixels to the
+  nearest one left.
+
+### Changed
+
+- The `.raster` format is now version 4 (tags, linked cels and the color
+  mode). Older files still open; older versions of Raster can't open version 4
+  files.
+- Palette changes are now undoable and mark the document as changed.
+
 ## [0.2.0] - 2026-10-19
 
 ### Changed
