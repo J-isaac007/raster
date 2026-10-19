@@ -1,6 +1,5 @@
-# Creates a GitHub Release when a version tag (v1.2.3) is pushed. The release
-# notes come from that version's CHANGELOG section, and a zip of the built
-# web app is attached for anyone who wants to host Raster themselves.
+# Builds the Windows installer when a version tag (v1.2.3) is pushed and
+# publishes it as a GitHub Release, with that version's CHANGELOG notes.
 name: Release
 
 on:
@@ -11,8 +10,11 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +23,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run build
 
       - name: Check the tag matches package.json
         run: |
@@ -30,6 +31,9 @@ jobs:
             || { echo "Tag $GITHUB_REF_NAME does not match package.json"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
+      - name: Build the installer
+        run: npm run dist
+
       - name: Extract release notes
         run: |
           awk -v v="$VERSION" '
@@ -37,15 +41,14 @@ jobs:
             on && /^## \[/ { exit }
             on { print }
           ' CHANGELOG.md > notes.md
-          printf '\n---\nUse it now at https://%s.github.io/%s/ or see [how to install](https://github.com/%s/blob/main/docs/install.md).\n' \
-            "${GITHUB_REPOSITORY_OWNER,,}" "${GITHUB_REPOSITORY#*/}" "$GITHUB_REPOSITORY" >> notes.md
-
-      - name: Package the web app
-        run: cd dist && zip -r "../raster-web-$VERSION.zip" .
+          printf '\n---\n**Download** `Raster-Setup-%s.exe` below to install, or `Raster-%s-portable.exe` to run without installing. [How to install](https://github.com/%s/blob/main/docs/install.md)\n' \
+            "$VERSION" "$VERSION" "$GITHUB_REPOSITORY" >> notes.md
 
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "raster-web-$VERSION.zip" \
+          gh release create "$GITHUB_REF_NAME" \
+            "release/Raster-Setup-$VERSION.exe" \
+            "release/Raster-$VERSION-portable.exe" \
             --title "Raster $VERSION" --notes-file notes.md

@@ -15,7 +15,7 @@ import {
 } from './io';
 import { TOOLS } from './tools';
 
-export type DialogId = 'new' | 'export' | 'canvasSize' | 'grid' | 'shortcuts' | 'install' | 'about';
+export type DialogId = 'new' | 'export' | 'canvasSize' | 'grid' | 'shortcuts' | 'about';
 
 export interface Action {
   id: string;
@@ -383,11 +383,6 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       },
     },
 
-    {
-      id: 'help.install',
-      label: 'Install Raster…',
-      run: () => openDialog('install'),
-    },
     {
       id: 'help.shortcuts',
       label: 'Keyboard Shortcuts',

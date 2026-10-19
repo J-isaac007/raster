@@ -7,9 +7,12 @@ what we look for in a pull request.
 
 ```bash
 npm install
-npm run dev     # app at http://localhost:5173
+npm run dev     # opens the desktop app with hot reload
 npm test        # unit tests
 ```
+
+`npm run dev:web` runs the UI in a browser tab instead, which is handy for
+quick UI work; file dialogs fall back to browser downloads there.
 
 Before you open a pull request, make sure these pass:
 
@@ -37,17 +40,32 @@ src/
     gif.ts       GIF encoder (gifDecode.ts decodes, quantize.ts reduces colors)
     sheet.ts     Sprite sheet layout and JSON metadata
   editor/   Application logic, still framework-free where possible.
-    editor.ts    The Editor: document, history and UI state in one store
+    editor.ts    The Editor: one store for document, history and UI state.
+                 Delegates to the modules below, which see it via core.ts.
+    state.ts     EditorState and other editor types, initial state
+    core.ts      EditorCore: the store/history slice the modules use
+    strokes.ts   Pixel edits from tools (dab, fill, shade), one undo step each
+    selection.ts Selection, floating pixels, copy/cut/paste
+    layers.ts    Layer stack: add, delete, reorder, merge, flip, properties
+    frames.ts    Animation frames, durations, playback, onion skin
+    view.ts      Viewport, zoom and pan, tile wrapping, reference image
     tools.ts     Tool behaviors (pointer down/move/up → editor calls)
     actions.ts   Every menu command and keyboard shortcut
     io.ts        Browser file APIs: open, save, PNG encode/decode
     autosave.ts  localStorage autosave
-    openFile.ts  Opening dropped or OS-launched files
-    pwa.ts       Service worker and file handling for the installed app
+    openFile.ts  Opening dropped files and files from Explorer
+    desktop.ts   The bridge to the desktop shell (native dialogs, file paths)
     context.ts   React bindings (useEditor, useEditorState)
   ui/       React components.
     CanvasView.tsx  The drawing surface (renders outside React for speed)
+electron/   The desktop shell.
+  main.cjs     Window, native dialogs, reading and writing files
+  preload.cjs  The small `window.raster` API the page is allowed to use
 ```
+
+The page runs sandboxed with no Node access. Anything that touches the
+file system goes through `window.raster` (see `src/editor/desktop.ts`), and the
+main process only writes to files the user picked or opened.
 
 ### Key ideas
 
@@ -74,7 +92,7 @@ src/
 
 ### Adding a tool
 
-1. Add its id to `ToolId` in `src/editor/editor.ts`.
+1. Add its id to `ToolId` in `src/editor/state.ts`.
 2. Implement it in `src/editor/tools.ts` and add it to `TOOLS`.
 3. Give it an icon in `src/ui/Toolbar.tsx`.
 4. Add tests in `src/editor/editor.test.ts`.
@@ -123,20 +141,18 @@ you've reviewed the changes. The version shows in Help › About.
 
 ### Where builds go
 
-- **Web app:** every push to `main` builds and deploys to GitHub Pages at
-  <https://j-isaac007.github.io/raster/> (`.github/workflows/deploy.yml`).
-  One-time setup: repository **Settings › Pages › Source: GitHub Actions**.
-- **Releases:** pushing a tag like `v0.2.0` creates a GitHub Release with that
-  version's changelog notes and a `raster-web-<version>.zip` for self-hosting
-  (`.github/workflows/release.yml`). The tag must match `package.json`.
+Pushing a tag like `v0.2.0` runs `.github/workflows/release.yml` on Windows:
+it builds `Raster-Setup-<version>.exe` and `Raster-<version>-portable.exe` and
+publishes them as a GitHub Release with that version's changelog notes. The
+tag must match `package.json`. How users install them is in
+[docs/install.md](docs/install.md).
 
-How users install it is documented in [docs/install.md](docs/install.md);
-keep it and the in-app steps (`INSTALL_STEPS` in `src/editor/pwa.ts`) in sync.
+To build locally, run `npm run dist`; the files land in `release/`.
 
 ## Reporting bugs
 
 Open an issue with steps to reproduce, what you expected, what happened, and
-your browser and OS. A `.raster` file that shows the problem helps a lot.
+your Windows version and Raster version. A `.raster` file that shows the problem helps a lot.
 
 ## License
 

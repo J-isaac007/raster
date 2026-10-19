@@ -13,10 +13,19 @@ import {
   type Sprite,
   type Surface,
 } from '../core/sprite';
+import { desktop, filterForName, filtersFromAccept, toFile, type PickedFile } from './desktop';
 
-/** Browser file plumbing: open dialogs, downloads, PNG encode/decode. */
+/**
+ * File plumbing: open dialogs, saving, PNG encode/decode. In the desktop app
+ * this uses native dialogs; in a plain browser (development) it falls back to
+ * file inputs and downloads.
+ */
 
-export function pickFile(accept: string): Promise<File | null> {
+export async function pickFile(accept: string): Promise<PickedFile | null> {
+  if (desktop) {
+    const file = await desktop.openFile({ filters: filtersFromAccept(accept) });
+    return file ? toFile(file) : null;
+  }
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -27,7 +36,19 @@ export function pickFile(accept: string): Promise<File | null> {
   });
 }
 
+/** Saves a generated file: a native save dialog on desktop, a download in a browser. */
 export function downloadBlob(blob: Blob, fileName: string): void {
+  if (desktop) {
+    const bridge = desktop;
+    void blob.arrayBuffer().then((data) =>
+      bridge.saveFile({
+        defaultName: fileName,
+        filters: filterForName(fileName),
+        data: new Uint8Array(data),
+      }),
+    );
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -169,25 +190,40 @@ interface FilePickerWindow {
   showSaveFilePicker?: (options: unknown) => Promise<SaveFileHandle>;
 }
 
-/** Remembered so Ctrl+S overwrites the same file where the browser allows it. */
+/** Remembered so Ctrl+S overwrites the file that's open. */
+let currentPath: string | null = null;
 let currentHandle: SaveFileHandle | null = null;
 
 export function forgetFileHandle(): void {
+  currentPath = null;
   currentHandle = null;
 }
 
 /**
- * Saves a project. Uses the File System Access API when available (so later
- * saves overwrite in place), otherwise downloads a file. Returns the file name,
- * or null if the user cancelled.
+ * Saves a project. Ctrl+S overwrites the open file; Save As (or a new
+ * document) asks where. Returns the saved file's name, or null if cancelled.
  */
 export async function saveProject(
   project: Project,
   fileName: string,
   saveAs = false,
 ): Promise<string | null> {
-  const blob = new Blob([serializeProject(project)], { type: 'application/json' });
+  const json = serializeProject(project);
   const name = baseName(fileName) + FILE_EXTENSION;
+
+  if (desktop) {
+    const saved = await desktop.saveFile({
+      path: saveAs ? null : currentPath,
+      defaultName: name,
+      filters: [{ name: 'Raster project', extensions: [FILE_EXTENSION.slice(1)] }],
+      data: new TextEncoder().encode(json),
+    });
+    if (!saved) return null;
+    currentPath = saved;
+    return saved.split(/[\\/]/).pop() ?? name;
+  }
+
+  const blob = new Blob([json], { type: 'application/json' });
   const picker = (window as FilePickerWindow).showSaveFilePicker;
 
   if (picker) {
@@ -214,7 +250,9 @@ export async function saveProject(
   return name;
 }
 
-export async function openProjectFile(file: File): Promise<Project> {
+export async function openProjectFile(file: PickedFile): Promise<Project> {
   forgetFileHandle();
-  return parseProject(await file.text());
+  const project = parseProject(await file.text());
+  currentPath = file.path ?? null;
+  return project;
 }

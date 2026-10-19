@@ -96,7 +96,7 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
   },
   {
     label: 'Help',
-    items: ['help.shortcuts', '-', 'help.install', 'help.about'],
+    items: ['help.shortcuts', '-', 'help.about'],
   },
 ];
 

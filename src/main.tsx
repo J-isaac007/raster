@@ -1,9 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { loadAutosave } from './editor/autosave';
+import { desktop, toFile } from './editor/desktop';
 import { Editor } from './editor/editor';
 import { acceptDroppedFiles, openAnyFile } from './editor/openFile';
-import { handleLaunchFiles, registerServiceWorker, trackInstall } from './editor/pwa';
 import { App } from './ui/App';
 import './styles.css';
 
@@ -18,9 +18,22 @@ if (restored) {
 }
 
 acceptDroppedFiles(editor);
-handleLaunchFiles((file) => openAnyFile(editor, file));
-trackInstall();
-registerServiceWorker();
+
+// Keep the window title and the quit warning in step with the document.
+let shown = '';
+const syncTitle = () => {
+  const { fileName, dirty } = editor.getState();
+  const title = `${fileName}${dirty ? ' •' : ''} — Raster`;
+  if (title === shown) return;
+  shown = title;
+  document.title = title;
+  desktop?.setDirty(dirty);
+};
+editor.subscribe(syncTitle);
+syncTitle();
+
+// Files opened from Explorer (double-click, "Open with") or a second launch.
+desktop?.onOpenFile((file) => openAnyFile(editor, toFile(file)));
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

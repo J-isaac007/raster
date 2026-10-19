@@ -1,18 +1,9 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { encodeGif } from '../core/gif';
 import { layoutSheet, packSheet, sheetMetadata } from '../core/sheet';
 import { MAX_SPRITE_SIZE } from '../core/sprite';
 import { formatKeys, type Action } from '../editor/actions';
 import { useEditor, useEditorState } from '../editor/context';
-import {
-  APP_URL,
-  detectPlatform,
-  getInstallState,
-  INSTALL_GUIDE_URL,
-  INSTALL_STEPS,
-  promptInstall,
-  subscribeInstall,
-} from '../editor/pwa';
 import { Logo } from './Logo';
 import type { Editor, TileMode } from '../editor/editor';
 import {
@@ -567,94 +558,6 @@ export function ShortcutsDialog({ onClose, actions }: { onClose: () => void; act
       </div>
       <div className="dialog-actions">
         <button className="btn primary" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </Dialog>
-  );
-}
-
-export function InstallDialog({ onClose }: { onClose: () => void }) {
-  const editor = useEditor();
-  const install = useSyncExternalStore(subscribeInstall, getInstallState);
-  const platform = useMemo(() => detectPlatform(), []);
-  const guide = INSTALL_STEPS[platform];
-  const hosted = window.location.origin + window.location.pathname;
-  const isOfficial = hosted.startsWith(APP_URL);
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(APP_URL);
-      editor.notify('Link copied');
-    } catch {
-      editor.notify('Couldn’t copy the link');
-    }
-  };
-
-  return (
-    <Dialog title="Install Raster" onClose={onClose}>
-      {install.installed ? (
-        <p>You’re using the installed app. It works offline and updates itself.</p>
-      ) : (
-        <p>
-          Install Raster to get its own window and icon, open <code>.raster</code> files from your
-          desktop, and work offline. It’s free and there’s nothing to download separately.
-        </p>
-      )}
-
-      {install.canPrompt && (
-        <button
-          className="btn primary"
-          style={{ width: '100%', marginBottom: 14 }}
-          onClick={async () => {
-            if (await promptInstall()) onClose();
-          }}
-        >
-          Install now
-        </button>
-      )}
-
-      {!install.installed && (
-        <div className="install-steps">
-          <strong>{guide.label}</strong>
-          <ol>
-            {guide.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      <div className="form-grid" style={{ marginTop: 14 }}>
-        <span className="hint">Web app</span>
-        <div className="field-row">
-          <input
-            className="text-input mono"
-            style={{ fontSize: 11 }}
-            readOnly
-            value={APP_URL}
-            aria-label="Raster web address"
-            onFocus={(e) => e.target.select()}
-          />
-          <button className="btn" type="button" onClick={copyLink}>
-            Copy
-          </button>
-        </div>
-      </div>
-      {!isOfficial && (
-        <p className="hint" style={{ marginTop: 10 }}>
-          You’re on a self-hosted or development copy. Install steps work here too.
-        </p>
-      )}
-      <p className="hint" style={{ marginTop: 10 }}>
-        Other devices, updating and uninstalling:{' '}
-        <a href={INSTALL_GUIDE_URL} target="_blank" rel="noreferrer">
-          install guide
-        </a>
-        .
-      </p>
-      <div className="dialog-actions">
-        <button className="btn" onClick={onClose}>
           Close
         </button>
       </div>

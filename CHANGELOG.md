@@ -6,14 +6,23 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
+## [0.2.0] - 2026-10-19
 
-- Help › Install Raster… shows install steps for your device, with a one-click
-  install button where the browser supports it.
-- Install guide (`docs/install.md`) covering every platform, updating,
-  uninstalling and self-hosting.
-- The web app deploys to GitHub Pages automatically, and version tags publish
-  a GitHub Release with a self-hostable zip.
+### Changed
+
+- Raster is now a Windows desktop app. Download the installer (or the
+  portable `.exe`) from GitHub Releases.
+- Open and save use native Windows dialogs. Ctrl+S saves straight back to the
+  file you opened, and exports ask where to save.
+- Double-clicking a `.raster` file opens it in Raster; opening another file
+  while Raster runs reuses the same window.
+- Raster remembers its window size and position, and warns before quitting
+  with unsaved changes.
+
+### Removed
+
+- The browser version, GitHub Pages deployment and installing as a web app
+  (PWA), including Help › Install Raster.
 
 ## [0.1.0] - 2026-10-19
 

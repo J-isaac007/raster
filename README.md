@@ -8,13 +8,12 @@
 <p align="center"><strong>A free, open source pixel art editor.</strong></p>
 
 <p align="center">
-  <a href="https://j-isaac007.github.io/raster/"><strong>Open Raster</strong></a> ·
-  <a href="docs/install.md">Install</a> ·
-  <a href="https://github.com/J-isaac007/raster/releases">Releases</a>
+  <a href="https://github.com/J-isaac007/raster/releases/latest"><strong>Download for Windows</strong></a> ·
+  <a href="docs/install.md">Install guide</a>
 </p>
 
-Raster is a fast, focused editor for sprites, icons and game art. It runs in
-any modern browser, needs no account, and keeps your work on your machine.
+Raster is a fast, focused desktop editor for sprites, icons and game art. It
+works offline, needs no account, and keeps your work on your machine.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -37,54 +36,49 @@ any modern browser, needs no account, and keeps your work on your machine.
 - **Full undo/redo** for every change to the document
 - **Files**: save and open `.raster` projects, import PNG and animated GIF,
   export PNG, GIF or sprite sheets at 1×–16× scale
-- **Installable**: works offline as an app and opens `.raster` files from your
-  desktop; drop files onto the window to open them
+- **Native desktop app**: Windows installer, `.raster` files open with a
+  double-click, native open and save dialogs, works fully offline
 - **Autosave**: a refresh or crash never loses your work
 - **Keyboard first**: shortcuts for every tool and command (press `?`)
 
 ## Install
 
-Raster runs in your browser at **<https://j-isaac007.github.io/raster/>**, with
-nothing to download. Install it from there to get its own window and icon,
-offline use and `.raster` file opening:
+Raster is a desktop app for **Windows 10 and 11**.
 
-| Device                          | How                                                    |
-| ------------------------------- | ------------------------------------------------------ |
-| Windows, macOS, Linux, ChromeOS | Chrome or Edge: install icon in the address bar        |
-| Mac with Safari                 | File › Add to Dock                                     |
-| Android                         | Chrome: ⋮ › Add to home screen › Install (no APK file) |
-| iPhone, iPad                    | Safari: Share › Add to Home Screen                     |
+1. Download `Raster-Setup-<version>.exe` from the
+   [latest release](https://github.com/J-isaac007/raster/releases/latest).
+2. Run it. If Windows says "Windows protected your PC", click
+   **More info › Run anyway** (the installer isn't code-signed yet).
+3. Open Raster from the Start menu.
 
-Step-by-step instructions, updating, uninstalling and self-hosting are in the
-[install guide](docs/install.md). In the app, **Help › Install Raster…** shows
-the steps for your device.
+There's also a portable `.exe` that runs without installing. The
+[install guide](docs/install.md) covers updating, uninstalling, where your
+data lives and troubleshooting.
 
 ## Development
 
-Raster needs [Node.js](https://nodejs.org/) 20 or newer.
+You need [Node.js](https://nodejs.org/) 20 or newer.
 
 ```bash
-git clone <your fork or this repo's URL> raster
+git clone https://github.com/J-isaac007/raster.git
 cd raster
 npm install
 npm run dev
 ```
 
-Then open the address Vite prints (usually http://localhost:5173).
+`npm run dev` opens Raster in a desktop window with hot reload.
 
 ### Scripts
 
-| Command           | What it does                         |
-| ----------------- | ------------------------------------ |
-| `npm run dev`     | Start the dev server with hot reload |
-| `npm run build`   | Typecheck and build to `dist/`       |
-| `npm run preview` | Serve the production build locally   |
-| `npm test`        | Run the unit tests                   |
-| `npm run lint`    | Lint with ESLint                     |
-| `npm run format`  | Format with Prettier                 |
-
-The production build is a static site. Host `dist/` anywhere: GitHub Pages,
-Netlify, or any web server. It also works from a subfolder.
+| Command           | What it does                                                 |
+| ----------------- | ------------------------------------------------------------ |
+| `npm run dev`     | Run the desktop app with hot reload                          |
+| `npm run dev:web` | Run the UI in a browser tab instead (quick UI work)          |
+| `npm start`       | Build and run the production app                             |
+| `npm run dist`    | Build the Windows installer and portable `.exe` (`release/`) |
+| `npm test`        | Run the unit tests                                           |
+| `npm run lint`    | Lint with ESLint                                             |
+| `npm run format`  | Format with Prettier                                         |
 
 ## Using Raster
 
@@ -121,12 +115,13 @@ Raster is young. Planned next, roughly in order:
 - [x] GIF and sprite sheet export
 - [x] Pixel-perfect strokes, dithering and shading
 - [x] Tile mode, tile grid and reference images
-- [x] Installable PWA with offline support
+- [x] Windows desktop app
 - [ ] Lasso and magic wand selection
 - [ ] Animation tags (named loops) and linked cels
 - [ ] Indexed color mode and palette swapping
 - [ ] Custom brushes from selections
-- [ ] Desktop builds (Tauri)
+- [ ] Code-signed installer and automatic updates
+- [ ] macOS and Linux builds
 
 Ideas and votes are welcome in the issue tracker.
 

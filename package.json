@@ -1,10 +1,17 @@
 {
   "name": "raster",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Raster — a free, open source pixel art editor.",
+  "description": "Raster — a free, open source pixel art editor for Windows.",
   "license": "MIT",
+  "author": "The Raster Contributors",
+  "homepage": "https://github.com/J-isaac007/raster",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/J-isaac007/raster.git"
+  },
   "type": "module",
+  "main": "electron/main.cjs",
   "keywords": [
     "pixel-art",
     "sprite-editor",
@@ -16,9 +23,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev-desktop.mjs",
+    "dev:web": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron --version && electron-builder --win --publish never -c.electronDist=node_modules/electron/dist",
+    "dist:dir": "npm run build && electron --version && electron-builder --win --publish never -c.electronDist=node_modules/electron/dist --dir",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -27,24 +37,76 @@
     "format:check": "prettier --check .",
     "release": "node scripts/release.mjs"
   },
-  "dependencies": {
-    "lucide-react": "^1.59.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
+    "lucide-react": "^1.59.0",
     "prettier": "^3.9.10",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"
+  },
+  "build": {
+    "appId": "io.github.jisaac007.raster",
+    "productName": "Raster",
+    "copyright": "Copyright © 2026 The Raster Contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "raster",
+        "name": "Raster Project",
+        "description": "Raster pixel art project",
+        "role": "Editor"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Raster",
+      "artifactName": "Raster-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Raster-${version}-portable.${ext}"
+    },
+    "publish": null
   }
 }

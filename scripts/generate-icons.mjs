@@ -1,7 +1,7 @@
 // Renders the Raster mark (src/brand/logo.json) to every brand asset:
-// the favicon, the installed-app PNG icons and the README lockups.
+// the app icon (build/icon.png) and the README lockups.
 // Run with `node scripts/generate-icons.mjs` after changing the logo.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const logo = JSON.parse(readFileSync('src/brand/logo.json', 'utf8'));
@@ -36,10 +36,6 @@ function runs(rows, colorOf, ox = 0, oy = 0) {
 const markSvg = (ox = 0, oy = 0) =>
   `<rect x="${ox}" y="${oy}" width="${N}" height="${N}" rx="${logo.radius}" fill="${logo.background}"/>` +
   runs(logo.pixels, (k) => logo.colors[k], ox, oy);
-
-const favicon =
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges">` +
-  `<title>Raster</title>${markSvg()}</svg>\n`;
 
 // 5×7 pixel wordmark.
 const GLYPHS = {
@@ -148,11 +144,9 @@ function renderPng(size, { inset = 0, fullBleed = false } = {}) {
   });
 }
 
-writeFileSync('public/favicon.svg', favicon);
-writeFileSync('public/icon-192.png', renderPng(192));
-writeFileSync('public/icon-512.png', renderPng(512));
-writeFileSync('public/icon-maskable-512.png', renderPng(512, { inset: 0.14, fullBleed: true }));
-writeFileSync('public/apple-touch-icon.png', renderPng(180, { inset: 0.08, fullBleed: true }));
+mkdirSync('build', { recursive: true });
+// electron-builder turns this into the Windows .ico and the window icon.
+writeFileSync('build/icon.png', renderPng(512));
 writeFileSync('docs/logo-light.svg', lockup('#16171d'));
 writeFileSync('docs/logo-dark.svg', lockup('#f4f5f8'));
-console.log('Wrote favicon, app icons and README logos.');
+console.log('Wrote build/icon.png and README logos.');

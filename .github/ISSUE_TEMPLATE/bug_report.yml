@@ -10,8 +10,8 @@ body:
       required: true
   - type: input
     attributes:
-      label: Browser and OS
-      placeholder: Firefox 140 on Windows 11
+      label: Windows and Raster version
+      placeholder: Windows 11, Raster 0.2.0 (Help › About)
     validations:
       required: true
   - type: textarea
