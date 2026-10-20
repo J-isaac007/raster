@@ -41,7 +41,7 @@ function BrushThumb({ brush }: { brush: CustomBrush }) {
   return (
     <canvas
       ref={ref}
-      className="brush-thumb checker"
+      className="brush-thumb prism"
       style={{ width: Math.max(1, brush.width * k), height: Math.max(1, brush.height * k) }}
       aria-hidden="true"
     />

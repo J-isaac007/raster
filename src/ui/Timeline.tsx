@@ -52,7 +52,7 @@ function FrameThumb({ index }: { index: number }) {
   return (
     <canvas
       ref={ref}
-      className="frame-thumb checker"
+      className="frame-thumb prism"
       style={{
         width: aspect >= 1 ? THUMB : THUMB * aspect,
         height: aspect >= 1 ? THUMB / aspect : THUMB,

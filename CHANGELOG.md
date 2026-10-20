@@ -67,6 +67,9 @@ All notable changes to Raster are documented here. The format follows
   mode). Older files still open; older versions of Raster can't open version 4
   files.
 - Palette changes are now undoable and mark the document as changed.
+- New transparency background: a light checker with faint bands in the logo's
+  colors. Each square now covers whole sprite pixels, so zooming in never
+  shows several squares inside one pixel.
 
 ## [0.2.0] - 2026-10-19
 

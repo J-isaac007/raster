@@ -42,7 +42,7 @@ function LayerThumb({ layerId }: { layerId: string }) {
   return (
     <canvas
       ref={ref}
-      className="layer-thumb checker"
+      className="layer-thumb prism"
       style={{
         objectFit: 'contain',
         width: aspect >= 1 ? 30 : 30 * aspect,

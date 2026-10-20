@@ -6,7 +6,8 @@ import { composite } from '../core/sprite';
 import { useEditor } from '../editor/context';
 import { TOOL_BY_ID, type Tool } from '../editor/tools';
 
-const CHECKER_SIZE = 8;
+/** Checker squares cover whole sprite pixels but never get smaller than this (CSS px). */
+const CHECKER_MIN = 6;
 const ONION_ALPHA = 0.32;
 /** Previous frames tint warm, next frames tint cool. */
 const ONION_TINTS = { prev: [255, 77, 106], next: [77, 140, 255] } as const;
@@ -31,16 +32,29 @@ const WHEEL_STEP = 60;
 const ANTS_MS = 60;
 const SELECTION_TOOLS = new Set(['select', 'lasso', 'wand']);
 
-function makeChecker(ctx: CanvasRenderingContext2D, dpr: number): CanvasPattern {
-  const cell = Math.round(CHECKER_SIZE * dpr);
+/**
+ * The "prism" checker: light and dark squares, tinted in bands of two rows
+ * with the logo's blue, green, yellow and pink. Light then dark per band.
+ */
+const PRISM_BANDS = [
+  ['#e5ecfc', '#d6def2'],
+  ['#e3f6ed', '#d4e8e3'],
+  ['#f9f4ea', '#eae6df'],
+  ['#f9e8ee', '#eadae4'],
+];
+
+/** A 2×8 checker tile; `placeChecker` scales it so each square covers whole sprite pixels. */
+function makeChecker(ctx: CanvasRenderingContext2D): CanvasPattern {
   const tile = document.createElement('canvas');
-  tile.width = tile.height = cell * 2;
+  tile.width = 2;
+  tile.height = PRISM_BANDS.length * 2;
   const t = tile.getContext('2d')!;
-  t.fillStyle = '#f4f5f8';
-  t.fillRect(0, 0, cell * 2, cell * 2);
-  t.fillStyle = '#d4d6de';
-  t.fillRect(cell, 0, cell, cell);
-  t.fillRect(0, cell, cell, cell);
+  for (let y = 0; y < tile.height; y++) {
+    for (let x = 0; x < 2; x++) {
+      t.fillStyle = PRISM_BANDS[y >> 1][(x + y) & 1];
+      t.fillRect(x, y, 1, 1);
+    }
+  }
   return ctx.createPattern(tile, 'repeat')!;
 }
 
@@ -74,7 +88,7 @@ export function CanvasView() {
     const reference = document.createElement('canvas');
     let referenceSource: unknown = null;
     let dpr = window.devicePixelRatio || 1;
-    let checker = makeChecker(ctx, dpr);
+    const checker = makeChecker(ctx);
     let frame = 0;
     let gesture: Gesture | null = null;
     let wheelAccum = 0;
@@ -117,11 +131,19 @@ export function CanvasView() {
       const w = Math.round(s.width * z);
       const h = Math.round(s.height * z);
 
+      // Checker squares line up with sprite pixels: one square per pixel when
+      // zoomed in, 2, 4, 8… pixels per square when zoomed out.
+      const step = 2 ** Math.max(0, Math.ceil(Math.log2((CHECKER_MIN * dpr) / z)));
+      const placeChecker = (x: number, y: number) => {
+        checker.setTransform(new DOMMatrix([z * step, 0, 0, z * step, x, y]));
+        return checker;
+      };
+
       ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
       ctx.fillRect(ox + 3 * dpr, oy + 3 * dpr, w, h);
-      ctx.fillStyle = checker;
-      ctx.fillRect(ox, oy, w, h);
       ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = placeChecker(ox, oy);
+      ctx.fillRect(ox, oy, w, h);
 
       // Reference image, fitted inside the canvas and kept to its aspect ratio.
       const ref = editor.referenceImage;
@@ -183,7 +205,7 @@ export function CanvasView() {
             if (!dx && !dy) continue;
             const tx = ox + dx * w;
             const ty = oy + dy * h;
-            ctx.fillStyle = checker;
+            ctx.fillStyle = placeChecker(tx, ty);
             ctx.fillRect(tx, ty, w, h);
             ctx.drawImage(buffer, tx, ty, w, h);
             ctx.fillStyle = 'rgba(16, 17, 21, 0.4)';
@@ -353,10 +375,7 @@ export function CanvasView() {
     const resize = () => {
       const rect = host.getBoundingClientRect();
       const nextDpr = window.devicePixelRatio || 1;
-      if (nextDpr !== dpr) {
-        dpr = nextDpr;
-        checker = makeChecker(ctx, dpr);
-      }
+      dpr = nextDpr;
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
       editor.setViewport(rect.width, rect.height);

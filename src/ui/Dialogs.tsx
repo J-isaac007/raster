@@ -335,7 +335,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         }}
       >
         <div
-          className="checker"
+          className="prism"
           style={{
             display: 'grid',
             placeItems: 'center',
