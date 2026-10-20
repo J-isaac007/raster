@@ -1,0 +1,41 @@
+RASTER - LICENSE AND PRIVACY NOTICE
+
+PRIVACY
+
+Raster runs entirely on your computer. It has no accounts, analytics or
+telemetry, and your art and files are never uploaded.
+
+The installed version checks GitHub for new versions when it starts and
+when you choose Help > Check for Updates. The request goes to github.com
+and includes your IP address and the app version, as every web request
+does. No personal information, files or usage data are sent.
+
+To turn this off, open Help > About Raster and clear "Check for updates
+when Raster starts".
+
+Full privacy policy:
+https://github.com/J-isaac007/raster/blob/main/docs/privacy.md
+
+LICENSE
+
+MIT License
+
+Copyright (c) 2026 The Raster Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -37,6 +37,9 @@ each time.
 
 ## Why Windows warns you
 
+See also the [code signing policy](../README.md#code-signing-policy) and the
+[privacy policy](privacy.md).
+
 Raster's installer isn't signed with a paid code-signing certificate yet, so
 Windows SmartScreen doesn't recognize it and shows a warning the first time.
 That's expected for new open source apps. Click **More info › Run anyway**.

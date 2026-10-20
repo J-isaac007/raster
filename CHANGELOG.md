@@ -6,6 +6,14 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A privacy policy (docs/privacy.md). The installer shows the privacy notice
+  and license before installing.
+- A code signing policy in the README, and SignPath signing steps in the
+  release workflow, ready for when the project's SignPath Foundation
+  application is approved.
+
 ## [0.4.0] - 2026-10-20
 
 ### Added

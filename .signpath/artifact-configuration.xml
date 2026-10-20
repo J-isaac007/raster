@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for Raster releases. Paste this into the
+  "executables" artifact configuration of the SignPath project. The release
+  workflow uploads a ZIP holding the installer and the portable .exe and passes
+  the release version as the `version` parameter.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="Raster-Setup-${version}.exe" product-name="Raster" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="Raster-${version}-portable.exe" product-name="Raster" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

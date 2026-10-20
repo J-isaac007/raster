@@ -9,7 +9,9 @@
 
 <p align="center">
   <a href="https://github.com/J-isaac007/raster/releases/latest"><strong>Download for Windows</strong></a> ·
-  <a href="docs/install.md">Install guide</a>
+  <a href="docs/install.md">Install guide</a> ·
+  <a href="#code-signing-policy">Code signing policy</a> ·
+  <a href="docs/privacy.md">Privacy</a>
 </p>
 
 Raster is a fast, focused desktop editor for sprites, icons and game art. It
@@ -138,6 +140,30 @@ Raster is young. Planned next, roughly in order:
 - [ ] macOS and Linux builds
 
 Ideas and votes are welcome in the issue tracker.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io),
+certificate by [SignPath Foundation](https://signpath.org).
+
+_Signing starts with the first release after the project's application to
+SignPath Foundation is approved. Until then, releases are unsigned._
+
+Releases are built from this repository's source by GitHub Actions
+([`.github/workflows/release.yml`](.github/workflows/release.yml)), and every
+signing request is approved by hand.
+
+| Role                  | Members                                     |
+| --------------------- | ------------------------------------------- |
+| Committers, reviewers | [J-isaac007](https://github.com/J-isaac007) |
+| Approvers             | [J-isaac007](https://github.com/J-isaac007) |
+
+Changes from anyone outside these roles, such as pull requests, are reviewed
+by a committer before they're merged.
+
+**Privacy:** Raster doesn't send any information to other networked systems,
+except the installed app's update check, which asks GitHub for the latest
+release and can be turned off. See the [privacy policy](docs/privacy.md).
 
 ## Contributing
 

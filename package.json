@@ -102,7 +102,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Raster",
-      "artifactName": "Raster-Setup-${version}.${ext}"
+      "artifactName": "Raster-Setup-${version}.${ext}",
+      "license": "build/installer-notice.txt"
     },
     "portable": {
       "artifactName": "Raster-${version}-portable.${ext}"
