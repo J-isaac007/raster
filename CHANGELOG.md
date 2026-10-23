@@ -6,6 +6,8 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-24
+
 ### Added
 
 - Command palette (`Ctrl+K`, or the search box in the menu bar): find and run
