@@ -10,7 +10,6 @@
 <p align="center">
   <a href="https://github.com/J-isaac007/raster/releases/latest"><strong>Download for Windows</strong></a> ·
   <a href="docs/install.md">Install guide</a> ·
-  <a href="#code-signing-policy">Code signing policy</a> ·
   <a href="docs/privacy.md">Privacy</a>
 </p>
 
@@ -33,6 +32,9 @@ works offline, needs no account, and keeps your work on your machine.
   reference image overlay for tracing
 - **Selection**: rectangle select, move, cut, copy and paste (including images
   from other apps)
+- **Transform**: rotate by any angle with RotSprite (lines stay crisp, no
+  new colors), quarter turns, flips and scaling, for a selection or the
+  whole sprite; crop to selection and trim empty edges
 - **Symmetry**: mirror strokes horizontally, vertically or both
 - **Layers**: reorder, merge, rename, set opacity, hide and lock
 - **Colors**: primary and secondary colors with alpha, hex entry, palette
@@ -46,7 +48,12 @@ works offline, needs no account, and keeps your work on your machine.
 - **Native desktop app**: Windows installer, `.raster` files open with a
   double-click, native open and save dialogs, works fully offline
 - **Autosave**: a refresh or crash never loses your work
-- **Keyboard first**: shortcuts for every tool and command (press `?`)
+- **Keyboard first**: shortcuts for every tool and command (press `?`), and a
+  command palette (`Ctrl+K`) to find any of them by name
+- **Welcome screen and recent files**: start from a size preset or reopen
+  recent work; your last sprite comes back when Raster starts
+- **Preferences** (`Ctrl+,`): accent color, checkerboard size, grid color,
+  autosave and the update check
 
 ## Install
 
@@ -55,7 +62,7 @@ Raster is a desktop app for **Windows 10 and 11**.
 1. Download `Raster-Setup-<version>.exe` from the
    [latest release](https://github.com/J-isaac007/raster/releases/latest).
 2. Run it. If Windows says "Windows protected your PC", click
-   **More info › Run anyway** (the installer isn't code-signed yet).
+   **More info › Run anyway** (Windows doesn't know new apps yet).
 3. Open Raster from the Start menu.
 
 There's also a portable `.exe` that runs without installing. The
@@ -77,15 +84,18 @@ npm run dev
 
 ### Scripts
 
-| Command           | What it does                                                 |
-| ----------------- | ------------------------------------------------------------ |
-| `npm run dev`     | Run the desktop app with hot reload                          |
-| `npm run dev:web` | Run the UI in a browser tab instead (quick UI work)          |
-| `npm start`       | Build and run the production app                             |
-| `npm run dist`    | Build the Windows installer and portable `.exe` (`release/`) |
-| `npm test`        | Run the unit tests                                           |
-| `npm run lint`    | Lint with ESLint                                             |
-| `npm run format`  | Format with Prettier                                         |
+| Command             | What it does                                                 |
+| ------------------- | ------------------------------------------------------------ |
+| `npm run dev`       | Run the desktop app with hot reload                          |
+| `npm start`         | Run the last production build (`npm run build` first)        |
+| `npm run build`     | Typecheck and build into `out/`                              |
+| `npm run dist`      | Build the Windows installer and portable `.exe` (`release/`) |
+| `npm test`          | Run the unit tests                                           |
+| `npm run typecheck` | Typecheck the main process, preload and page                 |
+| `npm run lint`      | Lint with ESLint, including the layer rules                  |
+| `npm run format`    | Format with Prettier                                         |
+
+How the code fits together: [docs/architecture.md](docs/architecture.md).
 
 ## Using Raster
 
@@ -113,6 +123,9 @@ npm run dev
 | Swap colors                   | `X`                                     |
 | Swap a palette color          | Double-click it                         |
 | Indexed color mode            | `Shift+I`                               |
+| Flip selection or layer       | `Shift+H` / `Shift+V`                   |
+| Rotate / scale selection      | `Ctrl+T`                                |
+| Sprite size (scale)           | `Ctrl+Alt+I`                            |
 | Brush size                    | `[` and `]`                             |
 | Brush from selection / square | `Ctrl+B` / `Ctrl+Shift+B`               |
 | Undo / redo                   | `Ctrl+Z` / `Ctrl+Shift+Z`               |
@@ -122,7 +135,7 @@ On macOS, use `⌘` in place of `Ctrl`.
 
 ## Roadmap
 
-Raster is young. Planned next, roughly in order:
+Done so far:
 
 - [x] Rectangle selection with move and copy/paste
 - [x] Animation: frames, timeline, onion skinning, playback
@@ -135,33 +148,16 @@ Raster is young. Planned next, roughly in order:
 - [x] Indexed color mode and palette swapping
 - [x] Custom brushes from selections
 - [x] Automatic updates
-- [ ] Code-signed installer (the pipeline is ready; it needs a certificate,
-      see [docs/code-signing.md](docs/code-signing.md))
-- [ ] macOS and Linux builds
+- [x] Transform: RotSprite rotation, scaling, flips, crop and trim
+- [x] Refreshed interface, welcome screen, command palette, preferences
 
-Ideas and votes are welcome in the issue tracker.
+Next up: color tools (color wheel, ramps, gradients), then layer groups and
+blend modes, tilemaps and engine export. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are
+welcome in the issue tracker.
 
-## Code signing policy
+## Privacy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
-
-_Signing starts with the first release after the project's application to
-SignPath Foundation is approved. Until then, releases are unsigned._
-
-Releases are built from this repository's source by GitHub Actions
-([`.github/workflows/release.yml`](.github/workflows/release.yml)), and every
-signing request is approved by hand.
-
-| Role                  | Members                                     |
-| --------------------- | ------------------------------------------- |
-| Committers, reviewers | [J-isaac007](https://github.com/J-isaac007) |
-| Approvers             | [J-isaac007](https://github.com/J-isaac007) |
-
-Changes from anyone outside these roles, such as pull requests, are reviewed
-by a committer before they're merged.
-
-**Privacy:** Raster doesn't send any information to other networked systems,
+Raster doesn't send any information to other networked systems,
 except the installed app's update check, which asks GitHub for the latest
 release and can be turned off. See the [privacy policy](docs/privacy.md).
 

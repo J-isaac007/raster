@@ -1,10 +1,10 @@
-// Renders the Raster mark (src/brand/logo.json) to every brand asset:
+// Renders the Raster mark (src/renderer/src/assets/brand/logo.json) to every brand asset:
 // the app icon (build/icon.png) and the README lockups.
 // Run with `node scripts/generate-icons.mjs` after changing the logo.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
-const logo = JSON.parse(readFileSync('src/brand/logo.json', 'utf8'));
+const logo = JSON.parse(readFileSync('src/renderer/src/assets/brand/logo.json', 'utf8'));
 const N = logo.size;
 
 const hexRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));

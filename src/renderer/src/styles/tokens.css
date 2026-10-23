@@ -1,0 +1,95 @@
+/*
+ * Design tokens. Mirrors the "Raster UI" Figma file: the Color and Layout
+ * variable collections, the text styles and the effect styles, under the same
+ * names (Figma `color/panel` is `--panel` here, `space/md` is `--space-md`).
+ * Change a value in both places. Components use these, never raw values.
+ */
+:root {
+  /* color: surfaces */
+  --bg: #15161b;
+  --workspace: #101115;
+  --panel: #1c1d24;
+  --panel-raised: #24262f;
+  --hover: #2c2f3a;
+  --overlay: rgba(5, 6, 10, 0.6);
+
+  /* color: lines and text */
+  --border: #2e3039;
+  --border-strong: #3c3f4b;
+  --text: #e4e5ea;
+  --text-dim: #9093a3;
+  --text-faint: #636676;
+  --on-accent: #ffffff;
+
+  /* color: accent and status */
+  --accent: #5b8cff;
+  --accent-hover: #7aa2ff;
+  --accent-pressed: #4a78e8;
+  /* 16% of the accent; follows the accent chosen in Preferences */
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --danger: #ff6b7a;
+  --success: #4ade80;
+  --warning: #ffd166;
+
+  /* color: animation tags, in order of creation */
+  --tag-1: #5b8cff;
+  --tag-2: #ff9f43;
+  --tag-3: #2ed47a;
+  --tag-4: #e056fd;
+  --tag-5: #ff6b7a;
+  --tag-6: #00d2d3;
+
+  /* color: transparency checkerboard behind swatches */
+  --checker-light: #ffffff;
+  --checker-dark: #cfd1d8;
+  /* color: checkerboard behind the sprite and art previews (Figma color/canvas-*) */
+  --canvas-light: #f4f4f8;
+  --canvas-dark: #e3e4ec;
+
+  /* space: 4 px rhythm, with 2 and 6 for tight controls */
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-2xl: 24px;
+
+  /* radius */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-full: 999px;
+
+  /* size */
+  --control-sm: 24px;
+  --control: 28px;
+  --icon-sm: 14px;
+  --icon: 16px;
+  --tool: 32px;
+  --sidebar: 288px;
+
+  /* type: Figma text styles */
+  --font: 'Inter Variable', 'Inter', system-ui, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --type-caption: 400 11px/14px var(--font);
+  --type-section: 600 11px/14px var(--font);
+  --type-body: 400 12px/16px var(--font);
+  --type-body-strong: 500 12px/16px var(--font);
+  --type-label: 600 13px/18px var(--font);
+  --type-title: 600 15px/20px var(--font);
+  --type-display: 600 22px/28px var(--font);
+  --type-mono: 400 12px/16px var(--mono);
+  --type-mono-small: 400 11px/14px var(--mono);
+
+  /* elevation: Figma effect styles */
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --shadow-toast: 0 6px 20px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 2px var(--accent);
+
+  /* layering */
+  --z-menu: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+  --z-dialog: 100;
+}

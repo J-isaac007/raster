@@ -11,8 +11,8 @@ npm run dev     # opens the desktop app with hot reload
 npm test        # unit tests
 ```
 
-`npm run dev:web` runs the UI in a browser tab instead, which is handy for
-quick UI work; file dialogs fall back to browser downloads there.
+Page changes reload in place; main process and preload changes restart the
+app.
 
 Before you open a pull request, make sure these pass:
 
@@ -27,9 +27,63 @@ CI runs the same checks on every push and pull request.
 
 ## How the code is organized
 
+[docs/architecture.md](docs/architecture.md) explains the processes, the
+layers and what each may import, the IPC contract and how data flows. The
+short version:
+
 ```
 src/
-  core/     Pure TypeScript. No DOM, no React. Fully unit tested.
+  main/       Electron main process (Node)
+    index.ts     Lifecycle: single instance, startup, quit
+    window.ts    The window: saved size, navigation guards, quit warning
+    files.ts     Open/save dialogs, trusted paths, files from Explorer
+    updater.ts   Automatic updates from GitHub Releases (installed build only)
+    store.ts     Preferences and recent files, in settings.json in user data
+    ipc.ts       Typed handle/on/emit over the shared channel list
+  preload/    The small `window.raster` API the page is allowed to use
+  shared/     Used by every process: the IPC channels, RasterApi, and the
+              Settings type with its validation (settings.ts)
+  renderer/   The page
+    index.html
+    src/
+      main.tsx   Bootstrap: load settings, restore autosave or show the welcome
+                 screen, wire files and updates, render
+      core/      Pure engine, see below
+      editor/    The document store, see below
+      platform/  I/O adapters
+        desktop.ts   The `window.raster` bridge and file-type helpers
+        files.ts     Open and save dialogs, project saving (Ctrl+S overwrites)
+        image.ts     PNG encode/decode, importing images and animated GIFs
+        clipboard.ts Copying and pasting images on the system clipboard
+        settings.ts  The page's copy of the preferences (read sync, saved via main)
+        recent.ts    The recent-files list
+      app/       Wiring across layers
+        commands.ts  Every menu command and keyboard shortcut
+        openFile.ts  Opening dropped files and files from Explorer
+        autosave.ts  localStorage autosave
+        updates.ts   Update status, startup check and messages
+        preferences.ts Keeps the editor in step with preferences
+        commandSearch.ts Fuzzy matching for the command palette
+      ui/        React components
+        App.tsx         Layout and dialogs
+        editorContext.ts React bindings (useEditor, useEditorState)
+        components/     Shared primitives: Button, IconButton, Chip, TextInput, Select,
+                        Checkbox, Slider, Swatch, PanelSection, Kbd, TooltipLayer
+        canvas/         The drawing surface (renders outside React for speed)
+        chrome/         Menu bar, toolbar, tool options, status bar, logo
+        panels/         Color, palette, layers, reference, timeline
+        dialogs/        One file per dialog, plus the shared Dialog shell
+        screens/        Welcome screen and command palette
+        theme.ts        Accent colors chosen in Preferences
+      styles/    tokens.css (design tokens), components.css, then one stylesheet
+                 per area of the screen, joined by index.css
+      assets/    The logo's pixel grid
+```
+
+The pure engine and the store, in more detail:
+
+```
+core/     Pure TypeScript. No DOM, no React. Fully unit tested.
     color.ts     Packed RGBA colors, hex parsing, alpha blending
     sprite.ts    Sprite and layer model, compositing, flip, resize
     raster.ts    Drawing primitives: line, rect, ellipse, brush, flood fill
@@ -41,7 +95,8 @@ src/
     brush.ts     Dither patterns, pixel-perfect filter, shading
     gif.ts       GIF encoder (gifDecode.ts decodes, quantize.ts reduces colors)
     sheet.ts     Sprite sheet layout and JSON metadata
-  editor/   Application logic, still framework-free where possible.
+    transform.ts Quarter turns, flips, nearest scaling, RotSprite, trim bounds
+editor/   The document store. No DOM, no React.
     editor.ts    The Editor: one store for document, history and UI state.
                  Delegates to the modules below, which see it via core.ts.
     state.ts     EditorState and other editor types, initial state
@@ -52,27 +107,18 @@ src/
     frames.ts    Animation frames, linked cels, tags, durations, playback
     palette.ts   Palette changes, palette swaps and indexed color mode
     view.ts      Viewport, zoom and pan, tile wrapping, reference image
+    geometry.ts  Whole-sprite reshapes: canvas size, scale, rotate, crop, trim
     tools.ts     Tool behaviors (pointer down/move/up → editor calls)
-    actions.ts   Every menu command and keyboard shortcut
-    files.ts     Open and save dialogs, project saving (Ctrl+S overwrites)
-    image.ts     PNG encode/decode, importing images and animated GIFs
-    clipboard.ts Copying and pasting images on the system clipboard
-    updates.ts   Update status, startup check and messages (renderer side)
-    autosave.ts  localStorage autosave
-    openFile.ts  Opening dropped files and files from Explorer
-    desktop.ts   The bridge to the desktop shell (native dialogs, file paths)
-    context.ts   React bindings (useEditor, useEditorState)
-  ui/       React components.
-    CanvasView.tsx  The drawing surface (renders outside React for speed)
-electron/   The desktop shell.
-  main.cjs     Window, native dialogs, reading and writing files
-  preload.cjs  The small `window.raster` API the page is allowed to use
-  updater.cjs  Automatic updates from GitHub Releases (installed build only)
+    testing.ts   Shared helpers for the *.test.ts files beside it
 ```
 
 The page runs sandboxed with no Node access. Anything that touches the
-file system goes through `window.raster` (see `src/editor/desktop.ts`), and the
+file system goes through `window.raster` (see `src/shared/api.ts`), and the
 main process only writes to files the user picked or opened.
+
+Layers import each other by alias (`@core/color`, `@editor/editor`, …) and
+only in the allowed direction; `npm run lint` fails otherwise. Inside a
+layer, use relative imports.
 
 ### Key ideas
 
@@ -102,20 +148,29 @@ main process only writes to files the user picked or opened.
 
 ### Adding a tool
 
-1. Add its id to `ToolId` in `src/editor/state.ts`.
-2. Implement it in `src/editor/tools.ts` and add it to `TOOLS`.
-3. Give it an icon in `src/ui/Toolbar.tsx`.
-4. Add tests in `src/editor/editor.test.ts`.
+1. Add its id to `ToolId` in `src/renderer/src/editor/state.ts`.
+2. Implement it in `src/renderer/src/editor/tools.ts` and add it to `TOOLS`.
+3. Give it an icon in `src/renderer/src/ui/chrome/Toolbar.tsx`.
+4. Add tests next to the editor module it uses, e.g.
+   `src/renderer/src/editor/strokes.test.ts`.
 
 ### Adding a command
 
-Add an entry to `createActions` in `src/editor/actions.ts`. Give it `keys` for
-a shortcut, then list its id in a menu in `src/ui/MenuBar.tsx`. The shortcuts
-dialog picks it up automatically.
+Add an entry to `createActions` in `src/renderer/src/app/commands.ts`. Give it
+`keys` for a shortcut, then list its id in a menu in
+`src/renderer/src/ui/chrome/MenuBar.tsx`. The shortcuts dialog picks it up
+automatically.
+
+### Adding a call to the main process
+
+Declare the channel in `src/shared/ipc.ts`, add the method to `RasterApi` in
+`src/shared/api.ts`, implement it in `src/preload/index.ts` and handle it in
+`src/main/`. The typecheck catches any mismatch between them. See
+[the IPC contract](docs/architecture.md#the-ipc-contract).
 
 ### Changing the logo
 
-The mark lives in `src/brand/logo.json` as a pixel grid. The app reads it
+The mark lives in `src/renderer/src/assets/brand/logo.json` as a pixel grid. The app reads it
 directly; after editing it, run `node scripts/generate-icons.mjs` to rebuild
 the favicon, app icons and README logos.
 
@@ -159,9 +214,6 @@ tag must match `package.json`. How users install them is in
 
 The release also carries `latest.yml` and the installer's `.blockmap`:
 installed copies read them to find and verify updates, so don't remove them.
-The workflow signs the build when the `WIN_CSC_LINK` and
-`WIN_CSC_KEY_PASSWORD` secrets are set; see
-[docs/code-signing.md](docs/code-signing.md).
 
 To build locally, run `npm run dist`; the files land in `release/`.
 

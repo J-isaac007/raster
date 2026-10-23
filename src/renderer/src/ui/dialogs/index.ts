@@ -1,0 +1,11 @@
+export { AboutDialog } from './AboutDialog';
+export { CanvasSizeDialog } from './CanvasSizeDialog';
+export { ExportDialog } from './ExportDialog';
+export { GridDialog } from './GridDialog';
+export { NewSpriteDialog } from './NewSpriteDialog';
+export { PaletteColorDialog } from './PaletteColorDialog';
+export { PreferencesDialog } from './PreferencesDialog';
+export { ShortcutsDialog } from './ShortcutsDialog';
+export { SpriteSizeDialog } from './SpriteSizeDialog';
+export { TagDialog } from './TagDialog';
+export { TransformDialog } from './TransformDialog';

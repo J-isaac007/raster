@@ -8,11 +8,41 @@ All notable changes to Raster are documented here. The format follows
 
 ### Added
 
+- Command palette (`Ctrl+K`, or the search box in the menu bar): find and run
+  any command by name, or open a recent file.
+- Welcome screen with new-sprite size presets and recent files. It shows at
+  startup when there's no sprite to reopen, and from Help › Welcome Screen.
+- Recent files in the File menu, the welcome screen and the taskbar jump list.
+- Preferences (`Ctrl+,`): accent color, checkerboard size, pixel grid color
+  and visibility, autosave, reopening the last sprite, and the update check.
+  They're saved in `settings.json` in Raster's data folder.
+- Transform tools. Edit › Transform… (`Ctrl+T`) rotates the selection by any
+  angle and scales it, with a live preview. Rotation uses RotSprite, so lines
+  stay crisp and no new colors appear. Edit also flips (`Shift+H`, `Shift+V`)
+  and turns the selection by quarter turns; with nothing selected, these act
+  on the whole layer.
+- Sprite › Sprite Size… (`Ctrl+Alt+I`) scales every layer and frame without
+  blurring. Sprite › Rotate turns the whole sprite a quarter or half turn.
+- Sprite › Crop to Selection and Sprite › Trim Empty Edges.
 - A privacy policy (docs/privacy.md). The installer shows the privacy notice
   and license before installing.
-- A code signing policy in the README, and SignPath signing steps in the
-  release workflow, ready for when the project's SignPath Foundation
-  application is approved.
+- An architecture guide for contributors (docs/architecture.md).
+
+### Changed
+
+- The code now follows the standard Electron layout: a typed main process,
+  preload script and page under `src/`, one shared IPC contract, and
+  renderer layers whose import rules are checked by the linter. No change
+  in how the app behaves.
+- Refreshed interface. Consistent spacing, control sizes and type throughout,
+  with Inter and JetBrains Mono bundled so it looks the same everywhere. Every
+  icon button shows a tooltip with its shortcut. Side panel sections collapse
+  (and stay collapsed). Tool help moved to the status bar, which also has zoom
+  buttons. Messages appear as a toast over the canvas.
+- The canvas background is a plain white and light gray checkerboard, without
+  the colored bands.
+- Flip Layer moved from the Layer menu to Edit › Flip Horizontal / Vertical
+  (same shortcuts). It flips the selection when there is one.
 
 ## [0.4.0] - 2026-10-20
 
@@ -28,8 +58,6 @@ All notable changes to Raster are documented here. The format follows
   update** when one is ready. Help › Check for Updates checks now; Help ›
   About Raster turns the startup check off. The portable version doesn't
   update itself.
-- The release pipeline signs the installer when a code-signing certificate is
-  configured. See docs/code-signing.md.
 
 ### Note
 

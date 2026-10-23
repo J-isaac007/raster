@@ -1,0 +1,51 @@
+.options {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  height: 40px;
+  padding: 0 var(--space-lg);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.options .tool-name {
+  min-width: 84px;
+  font: var(--type-label);
+}
+
+.option-field {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.option-label {
+  font: var(--type-caption);
+  color: var(--text-dim);
+}
+
+.options .brush-size {
+  flex: none;
+  width: 200px;
+}
+
+.options .dither {
+  width: 96px;
+}
+
+.custom-brush {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.custom-brush .brush-mode {
+  width: 132px;
+}
+
+.brush-thumb {
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 1px var(--border-strong);
+  image-rendering: pixelated;
+}

@@ -1,5 +1,5 @@
 node_modules
-dist
+out
 coverage
 *.local
 .DS_Store
@@ -7,7 +7,4 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
-.playwright-mcp
-.claude/launch.json
 release
-graphify-out

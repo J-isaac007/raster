@@ -1,0 +1,14 @@
+/* Tokens, resets and shared components first; then each area, top to bottom. */
+@import './tokens.css';
+@import './base.css';
+@import './components.css';
+@import './layout.css';
+@import './menu-bar.css';
+@import './tool-options.css';
+@import './toolbar.css';
+@import './canvas.css';
+@import './panels.css';
+@import './timeline.css';
+@import './status-bar.css';
+@import './dialogs.css';
+@import './screens.css';

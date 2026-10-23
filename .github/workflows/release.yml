@@ -1,12 +1,5 @@
 # Builds the Windows installer when a version tag (v1.2.3) is pushed and
 # publishes it as a GitHub Release, with that version's CHANGELOG notes.
-#
-# Code signing (see docs/code-signing.md), whichever is configured:
-# - SignPath: set the SIGNPATH_ORGANIZATION_ID repository variable and the
-#   SIGNPATH_API_TOKEN secret. The workflow then waits for you to approve the
-#   signing request on signpath.io before it publishes.
-# - Your own .pfx: set the WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD secrets.
-# With neither, releases are unsigned.
 name: Release
 
 on:
@@ -15,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   windows:
@@ -23,8 +15,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,72 +32,7 @@ jobs:
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build the installer
-        env:
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-        run: |
-          if [ -n "$SIGNPATH_ORGANIZATION_ID" ]; then
-            # Installed copies of this version will only accept updates
-            # signed by SignPath Foundation, the certificate's publisher.
-            node -e "
-              const fs = require('fs');
-              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              pkg.build.publish.publisherName = ['SignPath Foundation'];
-              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-            "
-          fi
-          npm run dist
-
-      # ---- SignPath signing (skipped until SIGNPATH_ORGANIZATION_ID is set) ----
-
-      - name: Upload the unsigned executables for signing
-        if: env.SIGNPATH_ORGANIZATION_ID != ''
-        id: unsigned
-        uses: actions/upload-artifact@v4
-        with:
-          name: unsigned-executables
-          path: |
-            release/Raster-Setup-${{ env.VERSION }}.exe
-            release/Raster-${{ env.VERSION }}-portable.exe
-          if-no-files-found: error
-
-      - name: Sign with SignPath (approve the request on signpath.io)
-        if: env.SIGNPATH_ORGANIZATION_ID != ''
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'raster' }}
-          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
-          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG || 'executables' }}
-          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          # Leaves time to approve the request by hand.
-          wait-for-completion-timeout-in-seconds: 3600
-          output-artifact-directory: release-signed
-          parameters: |
-            version: "${{ env.VERSION }}"
-
-      - name: Use the signed executables
-        if: env.SIGNPATH_ORGANIZATION_ID != ''
-        run: |
-          cp "release-signed/Raster-Setup-$VERSION.exe" release/
-          cp "release-signed/Raster-$VERSION-portable.exe" release/
-          # Signing changed the installer's bytes: refresh the hash and size
-          # in latest.yml and the blockmap, or installed copies reject it.
-          node scripts/refresh-update-info.mjs "release/Raster-Setup-$VERSION.exe"
-
-      - name: Check the signatures
-        if: env.SIGNPATH_ORGANIZATION_ID != ''
-        shell: pwsh
-        run: |
-          foreach ($file in "release/Raster-Setup-$env:VERSION.exe", "release/Raster-$env:VERSION-portable.exe") {
-            $sig = Get-AuthenticodeSignature $file
-            if ($sig.Status -ne 'Valid') { throw "$file is not validly signed: $($sig.StatusMessage)" }
-            Write-Output "$file signed by $($sig.SignerCertificate.Subject)"
-          }
-
-      # ---- publish ----------------------------------------------------------------
+        run: npm run dist
 
       - name: Extract release notes
         run: |
@@ -116,8 +41,8 @@ jobs:
             on && /^## \[/ { exit }
             on { print }
           ' CHANGELOG.md > notes.md
-          printf '\n---\n**Download** `Raster-Setup-%s.exe` below to install, or `Raster-%s-portable.exe` to run without installing. [How to install](https://github.com/%s/blob/main/docs/install.md) · [Code signing policy](https://github.com/%s#code-signing-policy) · [Privacy](https://github.com/%s/blob/main/docs/privacy.md)\n' \
-            "$VERSION" "$VERSION" "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" >> notes.md
+          printf '\n---\n**Download** `Raster-Setup-%s.exe` below to install, or `Raster-%s-portable.exe` to run without installing. [How to install](https://github.com/%s/blob/main/docs/install.md) · [Privacy](https://github.com/%s/blob/main/docs/privacy.md)\n' \
+            "$VERSION" "$VERSION" "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" >> notes.md
 
       - name: Publish the release
         env:

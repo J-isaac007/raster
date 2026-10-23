@@ -37,17 +37,15 @@ each time.
 
 ## Why Windows warns you
 
-See also the [code signing policy](../README.md#code-signing-policy) and the
-[privacy policy](privacy.md).
-
-Raster's installer isn't signed with a paid code-signing certificate yet, so
-Windows SmartScreen doesn't recognize it and shows a warning the first time.
-That's expected for new open source apps. Click **More info › Run anyway**.
+Raster is new, so Windows SmartScreen doesn't recognize it yet and shows a
+warning the first time. That's expected for new open source apps. Click
+**More info › Run anyway**.
 
 To check that a download is genuine, only get it from this repository's
 [Releases page](https://github.com/J-isaac007/raster/releases). Every release
 is built from the public source code by GitHub Actions
-([`.github/workflows/release.yml`](../.github/workflows/release.yml)).
+([`.github/workflows/release.yml`](../.github/workflows/release.yml)). See
+also the [privacy policy](privacy.md).
 
 ## Updating
 
@@ -104,9 +102,9 @@ The installer and portable `.exe` are written to `release/`.
 ## Troubleshooting
 
 - **"Windows protected your PC" with no Run anyway button:** your organization
-  may block unsigned apps. Ask your IT admin, or try the portable version.
-- **Antivirus removes the download:** some antivirus tools flag new unsigned
-  apps. Restore it from quarantine if you trust the source, and please
+  may block apps it doesn't recognize. Ask your IT admin, or try the portable
+  version.
+- **Antivirus removes the download:** some antivirus tools flag new apps. Restore it from quarantine if you trust the source, and please
   [let us know](https://github.com/J-isaac007/raster/issues).
 - **Double-clicking a `.raster` file doesn't open Raster:** right-click it,
   choose **Open with › Choose another app**, pick Raster and tick **Always**.

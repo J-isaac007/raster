@@ -1,0 +1,128 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  height: 40px;
+  padding: 0 var(--space-lg);
+}
+
+.timeline-controls .divider {
+  margin: 0 var(--space-sm);
+}
+
+.timeline-info {
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
+.duration {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.duration .input {
+  width: 64px;
+}
+
+.frames {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.frame-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.tag-row {
+  position: relative;
+  flex: none;
+  height: 16px;
+}
+
+.tag {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  overflow: hidden;
+  padding: 0 var(--space-sm);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--tag) 22%, transparent);
+  color: var(--tag);
+  font: var(--type-caption);
+  line-height: 16px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag:hover {
+  background: color-mix(in srgb, var(--tag) 34%, transparent);
+}
+
+.frame {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.frame:hover {
+  border-color: var(--text-faint);
+}
+
+.frame[aria-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.frame-thumb {
+  border-radius: var(--space-2xs);
+  image-rendering: pixelated;
+}
+
+.frame-link {
+  position: absolute;
+  top: var(--space-2xs);
+  left: var(--space-2xs);
+  display: grid;
+  place-items: center;
+  padding: 1px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.frame-label {
+  position: absolute;
+  right: var(--space-2xs);
+  bottom: var(--space-2xs);
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--text-dim);
+  font: var(--type-mono-small);
+}
+
+.frame[aria-selected='true'] .frame-label {
+  background: var(--accent);
+  color: var(--on-accent);
+}

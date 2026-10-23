@@ -70,5 +70,5 @@ instead of `cels`. Readers treat it as one frame of 100 ms.
 
 ## Compatibility
 
-The reference reader and writer live in [`src/core/format.ts`](../src/core/format.ts).
+The reference reader and writer live in [`src/renderer/src/core/format.ts`](../src/renderer/src/core/format.ts).
 Any change to the format must bump `version` and keep reading older files.

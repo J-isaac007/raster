@@ -1,0 +1,262 @@
+.backdrop {
+  position: fixed;
+  z-index: var(--z-dialog);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--overlay);
+}
+
+.dialog {
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: var(--space-2xl);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dialog);
+}
+
+.dialog.wide {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.dialog h2 {
+  margin: 0 0 var(--space-xl);
+  font: var(--type-title);
+}
+
+.dialog p {
+  margin: 0 0 var(--space-md);
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.dialog strong {
+  color: var(--text);
+}
+
+.dialog a {
+  color: var(--accent);
+}
+
+.dialog code {
+  font: var(--type-mono);
+  color: var(--text);
+}
+
+/* label | control rows */
+.form-grid {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: var(--space-lg);
+  align-items: center;
+}
+
+.form-grid > label,
+.form-label {
+  color: var(--text-dim);
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.input-short {
+  width: 96px;
+}
+
+.color-preview {
+  flex: none;
+  width: var(--control);
+  height: var(--control);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.preview {
+  display: grid;
+  place-items: center;
+  height: 160px;
+  margin-bottom: var(--space-xl);
+  border-radius: var(--radius-sm);
+}
+
+.preview-img {
+  max-width: 90%;
+  max-height: 136px;
+  image-rendering: pixelated;
+}
+
+.anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 22px);
+  gap: var(--space-xs);
+}
+
+.anchor-grid button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.anchor-grid button:hover {
+  background: var(--hover);
+}
+
+.anchor-grid button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.dialog-note {
+  margin-top: var(--space-lg) !important;
+  font: var(--type-caption);
+  color: var(--text-faint) !important;
+}
+
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  justify-content: flex-end;
+  margin-top: var(--space-2xl);
+}
+
+.shortcut-table {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-sm) var(--space-xl);
+}
+
+.shortcut-table kbd {
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.about-logo {
+  display: grid;
+  place-items: center;
+  margin: var(--space-xs) 0 var(--space-xl);
+}
+
+.about-updates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.about-updates p {
+  margin: 0;
+}
+
+/* ---- preferences */
+
+.prefs {
+  display: flex;
+  gap: var(--space-xl);
+  min-height: 300px;
+}
+
+.prefs-nav {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  width: 148px;
+}
+
+.prefs-nav-item {
+  height: var(--control);
+  padding: 0 var(--space-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.prefs-nav-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.prefs-nav-item[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.prefs-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-xl);
+  min-width: 0;
+}
+
+.prefs-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.prefs-heading {
+  margin: 0;
+  font: var(--type-section);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.prefs-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.prefs-row > .form-label {
+  flex: none;
+  width: 112px;
+}
+
+.prefs-select {
+  width: 180px;
+}
+
+.prefs-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: var(--space-md);
+}
+
+.accents {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.accent-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.accent-swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 3px var(--text);
+}
