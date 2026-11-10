@@ -34,6 +34,15 @@
   width: 96px;
 }
 
+.options .transform-number {
+  width: 56px;
+}
+
+/* Pushes what follows (the transform's size, Cancel and Apply) to the right. */
+.options-spacer {
+  flex: 1;
+}
+
 .custom-brush {
   display: flex;
   align-items: center;

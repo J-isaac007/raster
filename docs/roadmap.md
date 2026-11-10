@@ -15,6 +15,9 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - Adjust hue, saturation and lightness; replace color; invert; desaturate
 - Outline and drop shadow effects
 - More shapes: filled, rounded rectangles, polygons
+- Transform with the mouse: drag handles on the canvas to scale and rotate,
+  with Shift for proportions and 15° steps, and Alt to scale from the center
+  (done)
 
 ## 0.8: Documents and layers
 

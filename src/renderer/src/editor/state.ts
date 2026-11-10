@@ -4,6 +4,7 @@ import { DEFAULT_PALETTE } from '@core/palette';
 import type { Selection } from '@core/raster';
 import { DEFAULT_FRAME_MS, type Layer, type Sprite } from '@core/sprite';
 import type { Tag } from '@core/tags';
+import type { TransformBox } from '@core/transformBox';
 
 export type ToolId =
   | 'select'
@@ -35,6 +36,20 @@ export interface LayerInfo {
   visible: boolean;
   locked: boolean;
   opacity: number;
+}
+
+/** A free transform in progress (Edit › Transform), as the canvas and chrome show it. */
+export interface FreeTransformInfo {
+  /** Clockwise, in degrees. */
+  angle: number;
+  /** 1 = unchanged. */
+  scaleX: number;
+  scaleY: number;
+  /** Size of the pixels being transformed, before any change. */
+  sourceWidth: number;
+  sourceHeight: number;
+  /** The handles' box around the result, in sprite pixels. Its size is the scaled size. */
+  box: TransformBox;
 }
 
 /** Immutable UI state. A new object is created on every change. */
@@ -78,6 +93,10 @@ export interface EditorState {
   cursor: { x: number; y: number } | null;
   /** Selected area in sprite pixels. Drawing tools only touch pixels inside it. */
   selection: Selection | null;
+  /** The free transform in progress, or null. */
+  transform: FreeTransformInfo | null;
+  /** Transform handles and fields keep the width-to-height ratio (Shift flips it while dragging). */
+  transformKeep: boolean;
   /** Index of the frame being viewed and edited. */
   frame: number;
   /** Frame durations in ms, one per frame. */
@@ -111,6 +130,7 @@ export type EditorOptions = Pick<
   | 'brushMode'
   | 'tileMode'
   | 'showTileGrid'
+  | 'transformKeep'
 >;
 
 export const ZOOM_STEPS = [0.25, 0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64];
@@ -160,6 +180,8 @@ export function initialState(sprite: Sprite): EditorState {
     panning: false,
     cursor: null,
     selection: null,
+    transform: null,
+    transformKeep: true,
     frame: 0,
     frames: sprite.frames.map((f) => f.duration),
     tags: sprite.tags,

@@ -40,6 +40,11 @@ export class EditorSelection {
   private floating: Floating | null = null;
   /** Pixels from the last copy or cut. */
   clipboard: Surface | null = null;
+  /**
+   * Runs before anything here changes or commits the floating pixels. The
+   * editor uses it to finish a free transform first.
+   */
+  beforeEdit: () => void = () => {};
 
   constructor(
     private readonly core: EditorCore,
@@ -95,6 +100,7 @@ export class EditorSelection {
 
   /** Commits floating pixels, if any. Runs before anything else edits the document. */
   settle(): void {
+    this.beforeEdit();
     const f = this.floating;
     if (!f) return;
     this.floating = null;
@@ -155,6 +161,7 @@ export class EditorSelection {
 
   /** Lifts the selected pixels off the active layer so they can be moved. */
   liftSelection(): boolean {
+    this.beforeEdit();
     if (this.floating) return true;
     const sel = this.core.getState().selection;
     const layer = this.core.activeLayer;
@@ -167,10 +174,48 @@ export class EditorSelection {
 
   /** Moves floating pixels so their top-left corner is at (x, y). */
   moveFloating(x: number, y: number): void {
+    this.beforeEdit();
     const f = this.floating;
     if (!f || (f.x === x && f.y === y)) return;
     f.x = x;
     f.y = y;
+    this.redrawFloating();
+  }
+
+  /** A copy of the floating pixels with their shape, place and undo label, or null. */
+  floatingSnapshot(): {
+    pixels: Surface;
+    mask?: Uint8Array;
+    x: number;
+    y: number;
+    label: string;
+  } | null {
+    const f = this.floating;
+    if (!f) return null;
+    return {
+      pixels: { width: f.width, height: f.height, pixels: f.pixels.slice() },
+      mask: f.mask?.slice(),
+      x: f.x,
+      y: f.y,
+      label: f.label,
+    };
+  }
+
+  /**
+   * Swaps the floating pixels for `pixels` at (x, y), shaped by `mask`. For
+   * the free transform's previews; doesn't run `beforeEdit`.
+   */
+  replaceFloating(
+    pixels: Surface,
+    mask: Uint8Array | undefined,
+    x: number,
+    y: number,
+    label: string,
+  ): void {
+    const f = this.floating;
+    if (!f) return;
+    Object.assign(f, { width: pixels.width, height: pixels.height, pixels: pixels.pixels });
+    Object.assign(f, { mask, x, y, label });
     this.redrawFloating();
   }
 
@@ -186,6 +231,7 @@ export class EditorSelection {
 
   /** Copies the selected pixels (floating ones included) to the clipboard. */
   copy(): Surface | null {
+    this.beforeEdit();
     const f = this.floating;
     const sel = this.core.getState().selection;
     if (!sel) {
@@ -200,6 +246,7 @@ export class EditorSelection {
 
   /** Clears the selected pixels, or the whole layer if nothing is selected. */
   deleteSelection(label = 'Delete'): void {
+    this.beforeEdit();
     const f = this.floating;
     if (f) {
       f.pixels.fill(TRANSPARENT);
@@ -246,6 +293,7 @@ export class EditorSelection {
    */
   private reshape(label: string, fn: (pixels: Surface) => Surface): void {
     if (this.strokes.stroking) return;
+    this.beforeEdit();
     const whole = !this.core.getState().selection;
     if (whole) {
       const { width, height } = this.core.sprite;

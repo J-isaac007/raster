@@ -96,6 +96,7 @@ core/     Pure TypeScript. No DOM, no React. Fully unit tested.
     gif.ts       GIF encoder (gifDecode.ts decodes, quantize.ts reduces colors)
     sheet.ts     Sprite sheet layout and JSON metadata
     transform.ts Quarter turns, flips, nearest scaling, RotSprite, trim bounds
+    transformBox.ts Transform handles: hit testing, scale/rotate drag math
 editor/   The document store. No DOM, no React.
     editor.ts    The Editor: one store for document, history and UI state.
                  Delegates to the modules below, which see it via core.ts.
@@ -103,6 +104,7 @@ editor/   The document store. No DOM, no React.
     core.ts      EditorCore: the store/history slice the modules use
     strokes.ts   Pixel edits from tools (dab, fill, shade), one undo step each
     selection.ts Selection, floating pixels, copy/cut/paste
+    freeTransform.ts The open Ctrl+T transform: live preview, apply, cancel
     layers.ts    Layer stack: add, delete, reorder, merge, flip, properties
     frames.ts    Animation frames, linked cels, tags, durations, playback
     palette.ts   Palette changes, palette swaps and indexed color mode

@@ -3,6 +3,18 @@ import { useEffect, useRef } from 'react';
 import { selectionOutline, type Edge } from '@core/mask';
 import { selectionContains, type Selection } from '@core/raster';
 import { composite } from '@core/sprite';
+import {
+  boxCorners,
+  dragAngle,
+  handlePoint,
+  HANDLES,
+  hitTest,
+  knobPoint,
+  resizeCursor,
+  scaleBox,
+  type TransformBox,
+  type TransformHit,
+} from '@core/transformBox';
 import { useEditor } from '../editorContext';
 import { TOOL_BY_ID, type Tool } from '@editor/tools';
 import { getSettings, subscribeSettings } from '@platform/settings';
@@ -36,6 +48,38 @@ const WHEEL_STEP = 60;
 const ANTS_MS = 60;
 const SELECTION_TOOLS = new Set(['select', 'lasso', 'wand']);
 
+// Transform handles, in CSS pixels (Figma: "Main window — transforming").
+const HANDLE_PX = 7;
+/** How close the pointer must be to grab a handle or the knob. */
+const HANDLE_HIT_PX = 6;
+/** How far outside a corner dragging still rotates. */
+const ROTATE_REACH_PX = 20;
+/** The rotation knob's distance above the top edge. */
+const KNOB_PX = 20;
+const KNOB_RADIUS_PX = 4.5;
+
+/** A clockwise arrow (Lucide's rotate-cw), white over a black outline so it shows on any art. */
+const ROTATE_CURSOR = (() => {
+  const paths =
+    '<path d="M20 12a8 8 0 1 1-8-8c2.2 0 4.3.9 5.9 2.4L20 8.5"/><path d="M20 3.5v5h-5"/>';
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+    `<g stroke="#000" stroke-width="4">${paths}</g><g stroke="#fff" stroke-width="2">${paths}</g></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 12 12, crosshair`;
+})();
+
+const hitKey = (hit: TransformHit | null) =>
+  !hit ? '' : hit.kind === 'scale' ? hit.handle : hit.kind;
+
+const transformCursor = (hit: TransformHit | null, box: TransformBox): string =>
+  !hit
+    ? 'default'
+    : hit.kind === 'move'
+      ? 'move'
+      : hit.kind === 'rotate'
+        ? ROTATE_CURSOR
+        : resizeCursor(box, hit.handle);
+
 /**
  * A 2×2 checker tile in the --canvas-light / --canvas-dark tokens (the same
  * colors as `.canvas-bg` previews); `placeChecker` scales it so each square
@@ -59,9 +103,25 @@ function makeChecker(ctx: CanvasRenderingContext2D): CanvasPattern {
 
 const modifiers = (e: PointerEvent) => ({ shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey });
 
+/** A drag on the transform box. Points are in sprite pixels, fractions kept. */
+interface TransformGesture {
+  kind: 'transform';
+  pointerId: number;
+  hit: TransformHit;
+  /** The box when the drag began. */
+  start: TransformBox;
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  shift: boolean;
+  alt: boolean;
+}
+
 type Gesture =
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
-  | { kind: 'tool'; pointerId: number; tool: Tool; button: number };
+  | { kind: 'tool'; pointerId: number; tool: Tool; button: number }
+  | TransformGesture;
 
 /**
  * The drawing surface. Rendering runs outside React: it subscribes to the
@@ -93,6 +153,8 @@ export function CanvasView() {
     let wheelAccum = 0;
     let fitted = false;
     let antsTimer = 0;
+    /** What the pointer is over on the transform box, while no button is held. */
+    let hover: TransformHit | null = null;
     /** Outline of the last drawn selection; recomputed when it changes. */
     let outline: { selection: Selection | null; edges: Edge[] } = { selection: null, edges: [] };
 
@@ -274,8 +336,8 @@ export function CanvasView() {
         ctx.restore();
       }
 
-      // Marching ants around the selection.
-      if (s.selection) {
+      // Marching ants around the selection (the transform box replaces them).
+      if (s.selection && !s.transform) {
         if (outline.selection !== s.selection) {
           outline = { selection: s.selection, edges: selectionOutline(s.selection) };
         }
@@ -306,6 +368,49 @@ export function CanvasView() {
         }
       }
 
+      // Transform box: a solid outline, eight handles and a rotation knob.
+      if (s.transform) {
+        const b = s.transform.box;
+        const accent =
+          getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() ||
+          '#5b8cff';
+        const toScreen = ([x, y]: [number, number]): [number, number] => [ox + x * z, oy + y * z];
+        // Straight boxes sit on pixel boundaries: snap to the device pixel grid.
+        const crisp = b.angle % 90 === 0;
+        const snap = (v: number) => (crisp ? Math.round(v) + 0.5 : v);
+        ctx.save();
+        ctx.lineWidth = Math.max(1, Math.floor(dpr));
+        ctx.strokeStyle = accent;
+        ctx.beginPath();
+        for (const [x, y] of boxCorners(b).map(toScreen)) ctx.lineTo(snap(x), snap(y));
+        ctx.closePath();
+        ctx.stroke();
+
+        const [nx, ny] = toScreen(handlePoint(b, 'n'));
+        const [kx, ky] = toScreen(knobPoint(b, KNOB_PX / s.zoom));
+        ctx.beginPath();
+        ctx.moveTo(nx, ny);
+        ctx.lineTo(kx, ky);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(kx, ky, KNOB_RADIUS_PX * dpr, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.stroke();
+
+        const size = Math.round(HANDLE_PX * dpr);
+        ctx.lineWidth = Math.max(1, Math.floor(dpr));
+        for (const h of HANDLES) {
+          const [x, y] = toScreen(handlePoint(b, h));
+          const left = Math.round(x - size / 2) + 0.5;
+          const top = Math.round(y - size / 2) + 0.5;
+          ctx.fillRect(left, top, size - 1, size - 1);
+          ctx.strokeRect(left, top, size - 1, size - 1);
+        }
+        ctx.restore();
+      }
+
       const hoverSelection =
         SELECTION_TOOLS.has(s.tool) &&
         s.cursor &&
@@ -313,7 +418,13 @@ export function CanvasView() {
         selectionContains(s.selection, s.cursor.x, s.cursor.y);
 
       // Brush footprint under the cursor.
-      if (s.cursor && !s.panning && gesture?.kind !== 'pan' && !SELECTION_TOOLS.has(s.tool)) {
+      if (
+        s.cursor &&
+        !s.panning &&
+        !s.transform &&
+        gesture?.kind !== 'pan' &&
+        !SELECTION_TOOLS.has(s.tool)
+      ) {
         const pointTool = s.tool === 'fill' || s.tool === 'picker';
         const custom = pointTool ? null : s.customBrush;
         const bw = custom ? custom.width : pointTool ? 1 : s.brushSize;
@@ -363,9 +474,13 @@ export function CanvasView() {
           ? 'grabbing'
           : s.panning
             ? 'grab'
-            : hoverSelection
-              ? 'move'
-              : 'crosshair';
+            : gesture?.kind === 'transform'
+              ? transformCursor(gesture.hit, gesture.start)
+              : s.transform
+                ? transformCursor(hover, s.transform.box)
+                : hoverSelection
+                  ? 'move'
+                  : 'crosshair';
     };
 
     const schedule = () => {
@@ -399,12 +514,86 @@ export function CanvasView() {
       };
     };
 
+    /** The pointer in sprite pixels, fractions kept (for the transform handles). */
+    const spritePoint = (e: PointerEvent) => {
+      const { sx, sy } = locate(e);
+      const s = editor.getState();
+      return { x: (sx - s.panX) / s.zoom, y: (sy - s.panY) / s.zoom };
+    };
+
+    const hitTransform = (e: PointerEvent): TransformHit | null => {
+      const s = editor.getState();
+      if (!s.transform) return null;
+      const p = spritePoint(e);
+      return hitTest(s.transform.box, p.x, p.y, {
+        handle: HANDLE_HIT_PX / s.zoom,
+        rotate: ROTATE_REACH_PX / s.zoom,
+        knob: KNOB_PX / s.zoom,
+      });
+    };
+
+    /** Previews the transform drag so far: nearest neighbor while dragging, RotSprite on release. */
+    const dragTransform = (g: TransformGesture, quality: 'fast' | 'best') => {
+      const s = editor.getState();
+      const t = s.transform;
+      if (!t) return;
+      const { hit, start } = g;
+      if (hit.kind === 'move') {
+        // Whole pixels, so the art never lands between them.
+        const cx = start.cx + Math.round(g.x - g.x0);
+        const cy = start.cy + Math.round(g.y - g.y0);
+        editor.setTransform({ cx, cy }, quality);
+      } else if (hit.kind === 'rotate') {
+        editor.setTransform({ angle: dragAngle(start, g.x0, g.y0, g.x, g.y, g.shift) }, quality);
+      } else {
+        // Corners follow Keep proportions, which Shift flips while held. Edges
+        // scale one side unless Shift is held.
+        const corner = hit.handle.length === 2;
+        const keep = corner ? s.transformKeep !== g.shift : g.shift;
+        const b = scaleBox(start, hit.handle, g.x, g.y, { keep, fromCenter: g.alt });
+        editor.setTransform(
+          {
+            cx: b.cx,
+            cy: b.cy,
+            scaleX: b.width / t.sourceWidth,
+            scaleY: b.height / t.sourceHeight,
+          },
+          quality,
+        );
+      }
+    };
+
     const onPointerDown = (e: PointerEvent) => {
       if (gesture) return;
       const p = locate(e);
       canvas.setPointerCapture(e.pointerId);
       if (e.button === 1 || (e.button === 0 && editor.getState().panning)) {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: e.clientX, lastY: e.clientY };
+        schedule();
+        return;
+      }
+      const transform = editor.getState().transform;
+      if (transform) {
+        if (e.button !== 0) return;
+        const hit = hitTransform(e);
+        // A click away from the box applies the transform.
+        if (!hit) {
+          editor.applyTransform();
+          return;
+        }
+        const { x, y } = spritePoint(e);
+        gesture = {
+          kind: 'transform',
+          pointerId: e.pointerId,
+          hit,
+          start: transform.box,
+          x0: x,
+          y0: y,
+          x,
+          y,
+          shift: e.shiftKey,
+          alt: e.altKey,
+        };
         schedule();
         return;
       }
@@ -417,8 +606,16 @@ export function CanvasView() {
     const onPointerMove = (e: PointerEvent) => {
       const p = locate(e);
       editor.setCursor({ x: p.x, y: p.y });
+      if (!gesture) {
+        const next = hitTransform(e);
+        if (hitKey(next) !== hitKey(hover)) schedule();
+        hover = next;
+      }
       if (!gesture || gesture.pointerId !== e.pointerId) return;
-      if (gesture.kind === 'pan') {
+      if (gesture.kind === 'transform') {
+        Object.assign(gesture, spritePoint(e), { shift: e.shiftKey, alt: e.altKey });
+        dragTransform(gesture, 'fast');
+      } else if (gesture.kind === 'pan') {
         const s = editor.getState();
         editor.setPan(s.panX + e.clientX - gesture.lastX, s.panY + e.clientY - gesture.lastY);
         gesture.lastX = e.clientX;
@@ -433,9 +630,21 @@ export function CanvasView() {
       if (gesture.kind === 'tool') {
         const p = locate(e);
         gesture.tool.up(editor, { x: p.x, y: p.y, button: gesture.button, ...modifiers(e) });
+      } else if (gesture.kind === 'transform') {
+        const g = gesture;
+        if (g.x !== g.x0 || g.y !== g.y0) dragTransform(g, 'best');
       }
       gesture = null;
       schedule();
+    };
+
+    // Shift and Alt change a transform drag even while the pointer stands still.
+    const onModifierKey = (e: KeyboardEvent) => {
+      if (gesture?.kind !== 'transform' || (e.key !== 'Shift' && e.key !== 'Alt')) return;
+      e.preventDefault();
+      gesture.shift = e.shiftKey;
+      gesture.alt = e.altKey;
+      dragTransform(gesture, 'fast');
     };
 
     const onPointerLeave = () => {
@@ -470,6 +679,8 @@ export function CanvasView() {
     canvas.addEventListener('pointerleave', onPointerLeave);
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('contextmenu', onContextMenu);
+    window.addEventListener('keydown', onModifierKey);
+    window.addEventListener('keyup', onModifierKey);
     resize();
 
     return () => {
@@ -485,6 +696,8 @@ export function CanvasView() {
       canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('contextmenu', onContextMenu);
+      window.removeEventListener('keydown', onModifierKey);
+      window.removeEventListener('keyup', onModifierKey);
     };
   }, [editor]);
 

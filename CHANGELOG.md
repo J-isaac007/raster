@@ -6,6 +6,33 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Transform with the mouse. Edit › Transform (`Ctrl+T`) puts a box with eight
+  handles around the selection, or around the active layer's art when nothing
+  is selected. Drag a corner to scale both sides or an edge to scale one; drag
+  just outside a corner, or the knob above the top edge, to rotate; drag
+  inside to move. `Shift` keeps proportions (on corners it switches Keep
+  proportions while held) and snaps rotation to 15°; `Alt` scales from the
+  center.
+- The preview follows the pointer with fast nearest-neighbor sampling and
+  switches to RotSprite when you let go, so rotation stays smooth on big
+  layers.
+- While transforming, the tool options bar shows Angle with 15°, 30°, 45°,
+  90° and 180° presets, Width and Height in percent, Keep proportions, and
+  Cancel and Apply. The fields and the handles stay in sync. The status bar
+  reads the size, scale and angle, for example
+  `Transform 20 × 18 · 125% × 125% · 15°`.
+- `Enter` (or `Ctrl+T` again, or a click away from the box) applies the
+  transform as one undo step. `Escape` or Undo cancels it.
+
+### Changed
+
+- The Transform dialog is gone: its fields now live in the tool options bar
+  while the handles are on the canvas.
+- Starting a transform switches to the Select tool, so the result can be
+  dragged into place before it settles.
+
 ## [0.6.0] - 2026-11-10
 
 ### Added

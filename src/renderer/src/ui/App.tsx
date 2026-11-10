@@ -22,7 +22,6 @@ import {
   ShortcutsDialog,
   SpriteSizeDialog,
   TagDialog,
-  TransformDialog,
 } from './dialogs';
 import { EditorContext } from './editorContext';
 import { ColorPanel } from './panels/ColorPanel';
@@ -60,8 +59,12 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
   const byId = useMemo(() => new Map(actions.map((a) => [a.id, a])), [actions]);
 
   useEffect(() => {
-    const byCombo = new Map<string, (typeof actions)[number]>();
-    for (const a of actions) for (const k of a.keys ?? []) byCombo.set(k, a);
+    // A key can serve several actions (Enter applies a transform, else plays);
+    // the first one enabled runs.
+    const byCombo = new Map<string, (typeof actions)[number][]>();
+    for (const a of actions) {
+      for (const k of a.keys ?? []) byCombo.set(k, [...(byCombo.get(k) ?? []), a]);
+    }
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (dialog || isTyping(e.target)) return;
@@ -70,12 +73,14 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
         editor.setPanning(true);
         return;
       }
-      const action = byCombo.get(eventCombo(e));
+      const candidates = byCombo.get(eventCombo(e));
       // Let the browser fire `paste`, which carries the clipboard contents.
-      if (!action || action.id === 'edit.paste') return;
+      if (!candidates || candidates[0].id === 'edit.paste') return;
       e.preventDefault();
+      const s = editor.getState();
+      const action = candidates.find((a) => !a.enabled || a.enabled(s));
+      if (!action) return;
       if (e.repeat && !REPEATABLE.has(action.id)) return;
-      if (action.enabled && !action.enabled(editor.getState())) return;
       action.run();
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -151,7 +156,6 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
       {dialog === 'export' && <ExportDialog onClose={close} />}
       {dialog === 'canvasSize' && <CanvasSizeDialog onClose={close} />}
       {dialog === 'spriteSize' && <SpriteSizeDialog onClose={close} />}
-      {dialog === 'transform' && <TransformDialog onClose={close} />}
       {dialog === 'grid' && <GridDialog onClose={close} />}
       {dialog === 'shortcuts' && <ShortcutsDialog onClose={close} actions={actions} />}
       {dialog === 'about' && <AboutDialog onClose={close} />}

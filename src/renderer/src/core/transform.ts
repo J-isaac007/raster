@@ -86,6 +86,19 @@ const MAX_WORK_PIXELS = 1 << 24;
  * pixels it doesn't cover are transparent. Quarter turns are exact.
  */
 export function rotSprite(src: Surface, degrees: number): Surface {
+  return rotate(src, degrees, true);
+}
+
+/**
+ * Rotates clockwise by any angle, each output pixel copying the source pixel
+ * under its center. Much faster than RotSprite but rougher, so it serves as
+ * the live preview while a transform handle is dragged.
+ */
+export function rotateNearest(src: Surface, degrees: number): Surface {
+  return rotate(src, degrees, false);
+}
+
+function rotate(src: Surface, degrees: number, upscale: boolean): Surface {
   const angle = ((degrees % 360) + 360) % 360;
   if (angle % 90 === 0) return rotateQuarter(src, angle / 90);
   const rad = (angle * Math.PI) / 180;
@@ -99,7 +112,7 @@ export function rotSprite(src: Surface, degrees: number): Surface {
 
   let big = src;
   let factor = 1;
-  while (factor < 8 && big.width * big.height * 4 <= MAX_WORK_PIXELS) {
+  while (upscale && factor < 8 && big.width * big.height * 4 <= MAX_WORK_PIXELS) {
     big = scale2x(big);
     factor *= 2;
   }
@@ -129,11 +142,25 @@ export interface Transform {
   scaleY: number;
 }
 
-/** Scales (nearest neighbor), then rotates (RotSprite). Sizes are capped at MAX_SPRITE_SIZE. */
-export function transformSurface(src: Surface, t: Transform): Surface {
-  const fit = (n: number) => Math.min(MAX_SPRITE_SIZE, Math.max(1, Math.round(n)));
-  const scaled = scaleNearest(src, fit(src.width * t.scaleX), fit(src.height * t.scaleY));
-  return rotSprite(scaled, t.angle);
+/** How `transformSurface` rotates: RotSprite (`best`) or plain nearest neighbor (`fast`). */
+export type TransformQuality = 'best' | 'fast';
+
+/** The size a side of `length` pixels becomes at `scale`, capped at MAX_SPRITE_SIZE. */
+export const scaledLength = (length: number, scale: number) =>
+  Math.min(MAX_SPRITE_SIZE, Math.max(1, Math.round(length * scale)));
+
+/** Scales (nearest neighbor), then rotates (RotSprite, or nearest neighbor when `fast`). */
+export function transformSurface(
+  src: Surface,
+  t: Transform,
+  quality: TransformQuality = 'best',
+): Surface {
+  const scaled = scaleNearest(
+    src,
+    scaledLength(src.width, t.scaleX),
+    scaledLength(src.height, t.scaleY),
+  );
+  return quality === 'best' ? rotSprite(scaled, t.angle) : rotateNearest(scaled, t.angle);
 }
 
 /** The smallest rectangle holding every non-transparent pixel of the buffers, or null if all are empty. */

@@ -14,7 +14,6 @@ export type DialogId =
   | 'export'
   | 'canvasSize'
   | 'spriteSize'
-  | 'transform'
   | 'grid'
   | 'shortcuts'
   | 'about'
@@ -95,6 +94,7 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
 
   const hasLayerBelow = (s: EditorState) => s.layers.findIndex((l) => l.id === s.activeLayerId) > 0;
   const hasSelection = (s: EditorState) => s.selection !== null;
+  const isTransforming = (s: EditorState) => s.transform !== null;
 
   return [
     {
@@ -224,11 +224,27 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
     { id: 'edit.rotateCW', label: 'Rotate 90° CW', run: () => editor.rotateSelection(1) },
     { id: 'edit.rotateCCW', label: 'Rotate 90° CCW', run: () => editor.rotateSelection(-1) },
     { id: 'edit.rotate180', label: 'Rotate 180°', run: () => editor.rotateSelection(2) },
+    // Handles on the canvas; Ctrl+T again applies.
     {
       id: 'edit.transform',
-      label: 'Transform…',
+      label: 'Transform',
       keys: ['mod+t'],
-      run: () => openDialog('transform'),
+      run: () => (editor.transforming ? editor.applyTransform() : editor.beginTransform()),
+    },
+    // Listed before frame.play: while transforming, Enter applies instead of playing.
+    {
+      id: 'edit.transformApply',
+      label: 'Apply Transform',
+      keys: ['Enter'],
+      run: () => editor.applyTransform(),
+      enabled: isTransforming,
+    },
+    {
+      id: 'edit.transformCancel',
+      label: 'Cancel Transform',
+      keys: ['Escape'],
+      run: () => editor.cancelTransform(),
+      enabled: isTransforming,
     },
     { id: 'edit.clear', label: 'Clear Layer', run: () => editor.clearLayer() },
     { id: 'edit.swap', label: 'Swap Colors', keys: ['x'], run: () => editor.swapColors() },

@@ -9,4 +9,3 @@ export { PreferencesDialog } from './PreferencesDialog';
 export { ShortcutsDialog } from './ShortcutsDialog';
 export { SpriteSizeDialog } from './SpriteSizeDialog';
 export { TagDialog } from './TagDialog';
-export { TransformDialog } from './TransformDialog';

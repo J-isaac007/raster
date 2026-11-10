@@ -13,9 +13,10 @@ import {
 } from '@core/sprite';
 import type { Project } from '@core/format';
 import type { Tag } from '@core/tags';
-import type { Transform } from '@core/transform';
+import type { Transform, TransformQuality } from '@core/transform';
 import type { EditorCore } from './core';
 import { EditorFrames } from './frames';
+import { EditorFreeTransform, type FreeTransformParams } from './freeTransform';
 import { EditorGeometry } from './geometry';
 import { EditorLayers } from './layers';
 import { EditorPalette } from './palette';
@@ -32,8 +33,17 @@ import {
 import { EditorStrokes } from './strokes';
 import { EditorView } from './view';
 
-export type { EditorState, LayerInfo, ReferenceSettings, TileMode, ToolId } from './state';
+export type {
+  EditorState,
+  FreeTransformInfo,
+  LayerInfo,
+  ReferenceSettings,
+  TileMode,
+  ToolId,
+} from './state';
 export { MAX_BRUSH, ZOOM_STEPS } from './state';
+export { MAX_TRANSFORM_SCALE, MIN_TRANSFORM_SCALE } from './freeTransform';
+export type { FreeTransformParams } from './freeTransform';
 
 type Listener = () => void;
 
@@ -57,10 +67,13 @@ export class Editor {
   private readonly selection = new EditorSelection(this.core, this.strokes, this.layers);
   private readonly frames = new EditorFrames(this.core);
   private readonly geometry = new EditorGeometry(this.core, this.view);
+  private readonly freeTransform = new EditorFreeTransform(this.core, this.selection);
 
   constructor(sprite: Sprite = createSprite(32, 32)) {
     this.sprite = sprite;
     this.state = initialState(sprite);
+    // Anything that touches the floating pixels applies an open transform first.
+    this.selection.beforeEdit = () => this.freeTransform.apply();
   }
 
   // ---- store plumbing -----------------------------------------------------
@@ -167,11 +180,13 @@ export class Editor {
     options: { palette?: Color[]; indexed?: boolean; fileName?: string; dirty?: boolean } = {},
   ): void {
     this.strokes.discard();
+    this.freeTransform.discard();
     this.selection.discard();
     this.sprite = sprite;
     this.history.clear();
     this.commit({
       selection: null,
+      transform: null,
       frame: 0,
       playing: false,
       activeLayerId: sprite.layers[sprite.layers.length - 1].id,
@@ -226,6 +241,11 @@ export class Editor {
 
   undo(): void {
     if (this.stroking) return;
+    // Undo during a transform backs out of the transform itself.
+    if (this.freeTransform.active) {
+      this.freeTransform.cancel();
+      return;
+    }
     this.settle();
     const cmd = this.history.undo();
     if (cmd) {
@@ -379,6 +399,25 @@ export class Editor {
   flipSelection = (axis: 'horizontal' | 'vertical') => this.selection.flip(axis);
   rotateSelection = (turns: 1 | 2 | -1) => this.selection.rotate(turns);
   transformSelection = (t: Transform) => this.selection.transform(t);
+
+  // ---- free transform with handles (freeTransform.ts) -----------------------
+
+  get transforming(): boolean {
+    return this.freeTransform.active;
+  }
+  /**
+   * Puts handles around the selection, or the active layer's content with
+   * nothing selected. Switches to the Select tool, which can move the result.
+   */
+  beginTransform = (): boolean => {
+    if (!this.freeTransform.begin()) return false;
+    if (!['select', 'lasso', 'wand'].includes(this.state.tool)) this.set({ tool: 'select' });
+    return true;
+  };
+  setTransform = (patch: Partial<FreeTransformParams>, quality?: TransformQuality) =>
+    this.freeTransform.set(patch, quality);
+  applyTransform = () => this.freeTransform.apply();
+  cancelTransform = () => this.freeTransform.cancel();
 
   // ---- frames (frames.ts) ---------------------------------------------------
 

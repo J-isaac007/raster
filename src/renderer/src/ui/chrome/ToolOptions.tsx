@@ -5,6 +5,7 @@ import { MAX_BRUSH, type ToolId } from '@editor/editor';
 import { TOOL_BY_ID } from '@editor/tools';
 import { Checkbox, Chip, IconButton, Select, Slider } from '../components';
 import { useEditor, useEditorState } from '../editorContext';
+import { TransformOptions } from './TransformOptions';
 
 const BRUSH_TOOLS: ToolId[] = ['pencil', 'eraser', 'shade', 'line', 'rect', 'ellipse'];
 const DITHER_TOOLS: ToolId[] = ['pencil', 'line', 'rect', 'ellipse', 'fill'];
@@ -57,9 +58,19 @@ export function ToolOptions() {
     dither: s.dither,
     customBrush: s.customBrush,
     brushMode: s.brushMode,
+    transform: s.transform,
   }));
   const usesBrush = BRUSH_TOOLS.includes(s.tool);
   const isShape = s.tool === 'rect' || s.tool === 'ellipse';
+
+  if (s.transform) {
+    return (
+      <div className="options" role="toolbar" aria-label="Transform options">
+        <span className="tool-name">Transform</span>
+        <TransformOptions transform={s.transform} />
+      </div>
+    );
+  }
 
   return (
     <div className="options" role="toolbar" aria-label="Tool options">

@@ -1,5 +1,5 @@
 import { ZoomIn, ZoomOut } from 'lucide-react';
-import type { ToolId } from '@editor/editor';
+import type { FreeTransformInfo, ToolId } from '@editor/editor';
 import { IconButton } from '../components';
 import { useEditor, useEditorState } from '../editorContext';
 
@@ -19,6 +19,15 @@ const HINTS: Record<ToolId, string> = {
   picker: 'Left click picks the primary color, right click the secondary',
 };
 
+const TRANSFORM_HINT =
+  'Drag a handle to scale · Drag outside a corner to rotate · Shift keeps proportions, snaps to 15° · Alt scales from the center · Enter applies · Esc cancels';
+
+/** "Transform 20 × 18 · 125% × 125% · 15°" */
+function transformReadout(t: FreeTransformInfo): string {
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  return `Transform ${t.box.width} × ${t.box.height} · ${pct(t.scaleX)} × ${pct(t.scaleY)} · ${t.angle}°`;
+}
+
 export function StatusBar() {
   const editor = useEditor();
   const s = useEditorState((s) => ({
@@ -28,6 +37,7 @@ export function StatusBar() {
     zoom: s.zoom,
     tool: s.tool,
     selection: s.selection,
+    transform: s.transform,
   }));
   const inside =
     s.cursor && s.cursor.x >= 0 && s.cursor.y >= 0 && s.cursor.x < s.width && s.cursor.y < s.height;
@@ -37,11 +47,17 @@ export function StatusBar() {
       <span className="mono" title="Cursor position">
         {inside ? `${s.cursor!.x}, ${s.cursor!.y}` : '–, –'}
       </span>
-      <span className="mono" title={s.selection ? 'Selection size' : 'Sprite size'}>
-        {s.selection
-          ? `Selection ${s.selection.width} × ${s.selection.height}`
-          : `${s.width} × ${s.height}`}
-      </span>
+      {s.transform ? (
+        <span className="mono" title="Size after scaling, scale and angle" aria-live="polite">
+          {transformReadout(s.transform)}
+        </span>
+      ) : (
+        <span className="mono" title={s.selection ? 'Selection size' : 'Sprite size'}>
+          {s.selection
+            ? `Selection ${s.selection.width} × ${s.selection.height}`
+            : `${s.width} × ${s.height}`}
+        </span>
+      )}
       <div className="zoom">
         <IconButton
           icon={ZoomOut}
@@ -55,7 +71,7 @@ export function StatusBar() {
         <IconButton icon={ZoomIn} label="Zoom in" shortcut="=" onClick={() => editor.zoomStep(1)} />
       </div>
       <span className="divider" />
-      <span className="status-hint">{HINTS[s.tool]}</span>
+      <span className="status-hint">{s.transform ? TRANSFORM_HINT : HINTS[s.tool]}</span>
     </footer>
   );
 }

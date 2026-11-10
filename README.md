@@ -32,9 +32,10 @@ works offline, needs no account, and keeps your work on your machine.
   reference image overlay for tracing
 - **Selection**: rectangle select, move, cut, copy and paste (including images
   from other apps)
-- **Transform**: rotate by any angle with RotSprite (lines stay crisp, no
-  new colors), quarter turns, flips and scaling, for a selection or the
-  whole sprite; crop to selection and trim empty edges
+- **Transform**: drag handles on the canvas to scale and rotate a selection or
+  layer (`Ctrl+T`), or type the angle and size; rotation uses RotSprite (lines
+  stay crisp, no new colors). Quarter turns, flips and scaling for a selection
+  or the whole sprite; crop to selection and trim empty edges
 - **Symmetry**: mirror strokes horizontally, vertically or both
 - **Layers**: reorder, merge, rename, set opacity, hide and lock
 - **Colors**: primary and secondary colors with alpha, hex entry, indexed
@@ -128,7 +129,7 @@ How the code fits together: [docs/architecture.md](docs/architecture.md).
 | Indexed color mode            | `Shift+I`                               |
 | Browse palettes               | `Ctrl+Alt+P`                            |
 | Flip selection or layer       | `Shift+H` / `Shift+V`                   |
-| Rotate / scale selection      | `Ctrl+T`                                |
+| Rotate / scale with handles   | `Ctrl+T`, then `Enter` / `Esc`          |
 | Sprite size (scale)           | `Ctrl+Alt+I`                            |
 | Brush size                    | `[` and `]`                             |
 | Brush from selection / square | `Ctrl+B` / `Ctrl+Shift+B`               |
