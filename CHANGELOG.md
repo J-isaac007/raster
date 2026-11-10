@@ -6,6 +6,33 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-10
+
+### Added
+
+- Palette library: Palette › Browse Palettes… (`Ctrl+Alt+P`, or Browse
+  palettes… on the Palette panel). Search 28 built-in palettes, grouped as
+  Popular, Consoles & computers, Small & 1-bit and Ramps, each credited to
+  its author (docs/palettes.md). Use a palette, or add only the colors you
+  don't have yet.
+- My palettes: imported and saved palettes are kept in `settings.json` and
+  can be renamed or deleted. Palette › Save Current Palette… adds the
+  sprite's palette.
+- Palette › Import Palette… reads `.hex`, GIMP `.gpl`, JASC `.pal`,
+  Paint.NET `.txt`, Adobe Color Table `.act` and Adobe Swatch Exchange `.ase`
+  (RGB, CMYK, grayscale and Lab swatches). Dropping a palette file on the
+  window imports it too.
+- Palette › Export Palette… saves `.hex`, `.gpl` or `.pal`, chosen in the
+  save dialog.
+
+### Changed
+
+- New sprites still start with PICO-8. The Game Boy palette now uses the bgb
+  emulator's colors, as published on Lospec.
+- The preset dropdown on the Palette panel is replaced by the palette browser.
+- The pixel grid is now off by default, so pixels show without outlines.
+  Turn it on with View › Toggle Pixel Grid (`Ctrl+'`) or in Preferences.
+
 ## [0.5.0] - 2026-10-24
 
 ### Added

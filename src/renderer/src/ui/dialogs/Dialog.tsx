@@ -7,16 +7,20 @@ export function Dialog({
   onClose,
   children,
   wide,
+  className,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Fields marked `data-own-escape` (inline renames) use Escape to cancel themselves.
+      const own = e.target instanceof HTMLElement && e.target.closest('[data-own-escape]');
+      if (e.key === 'Escape' && !own) {
         e.stopPropagation();
         onClose();
       }
@@ -29,7 +33,7 @@ export function Dialog({
   return (
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
-        className={cx('dialog', wide && 'wide')}
+        className={cx('dialog', wide && 'wide', className)}
         role="dialog"
         aria-modal="true"
         aria-label={title}

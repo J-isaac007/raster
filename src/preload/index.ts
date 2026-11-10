@@ -35,6 +35,9 @@ const api: RasterApi = {
   getRecentFiles: () => invoke('recent:list'),
   openRecentFile: (path) => invoke('recent:open', path),
   clearRecentFiles: () => send('recent:clear'),
+  getPalettes: () => invoke('palettes:list'),
+  savePalette: (palette) => invoke('palettes:save', palette),
+  deletePalette: (id) => invoke('palettes:delete', id),
 };
 
 contextBridge.exposeInMainWorld('raster', api);

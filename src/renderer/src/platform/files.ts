@@ -43,6 +43,32 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * Saves a file that can be written in several formats: the save dialog offers
+ * each, and the file gets the format of the chosen name. In a browser the
+ * first format is downloaded. `formats` maps an extension to its label and contents.
+ */
+export function saveFileAs(
+  baseFileName: string,
+  formats: { extension: string; label: string; text: string }[],
+): void {
+  const [first] = formats;
+  const encode = (text: string) => new TextEncoder().encode(text);
+  if (desktop) {
+    void desktop.saveFile({
+      defaultName: `${baseFileName}.${first.extension}`,
+      filters: formats.map((f) => ({ name: f.label, extensions: [f.extension] })),
+      data: encode(first.text),
+      variants: Object.fromEntries(formats.map((f) => [f.extension, encode(f.text)])),
+    });
+    return;
+  }
+  downloadBlob(
+    new Blob([first.text], { type: 'text/plain' }),
+    `${baseFileName}.${first.extension}`,
+  );
+}
+
 export function baseName(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, '') || 'untitled';
 }

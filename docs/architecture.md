@@ -127,16 +127,24 @@ check at start (if enabled in Preferences) through `app/updates.ts`, and
 main pushes every status change back on `update:status`. A downloaded update
 installs on quit, or right away from the update badge.
 
-### Preferences and recent files
+### Preferences, recent files and saved palettes
 
-`src/main/store.ts` keeps both in `settings.json` in the user-data folder,
-written through a temp file. Every value read from disk or sent by the page
-goes through `sanitizeSettings` / `sanitizeRecent` in `src/shared/settings.ts`.
+`src/main/store.ts` keeps all three in `settings.json` in the user-data
+folder, written through a temp file. Every value read from disk or sent by the
+page goes through `sanitizeSettings` / `sanitizeRecent` / `sanitizePalettes`
+in `src/shared/settings.ts` (at most 200 palettes of 256 colors, stored as
+`#rrggbbaa`).
 The page loads the settings once before it renders (`platform/settings.ts`),
 reads them synchronously after that, and saves changes in the background
 (`settings:set`). Opening a sprite or saving a project adds it to the recent
 list in the main process; `recent:open` only reads paths that are on that
 list.
+
+The palette library is split the same way: `core/palettes.ts` holds the
+built-in palettes and `core/paletteFormats.ts` reads and writes palette files;
+`platform/palettes.ts` mirrors My palettes (`palettes:list`, `palettes:save`,
+`palettes:delete`); `app/palettes.ts` imports, saves, exports and applies
+palettes for the commands and `ui/dialogs/PaletteBrowserDialog.tsx`.
 
 ## Build and packaging
 

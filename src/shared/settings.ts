@@ -1,5 +1,5 @@
 /**
- * User preferences and the recent-files list, stored by the main process in
+ * User preferences, the recent-files list and saved palettes, stored by the main process in
  * `settings.json` in the app's user-data folder. Pure: shared by the main
  * process (which validates everything it reads or is sent) and the page.
  */
@@ -31,7 +31,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   accent: 'blue',
   checkerSize: 'medium',
   gridColor: '#505464',
-  showPixelGrid: true,
+  showPixelGrid: false,
   autosave: true,
   reopenLast: true,
   checkUpdates: true,
@@ -94,4 +94,72 @@ export function sanitizeRecent(input: unknown): RecentFile[] {
       typeof f.openedAt === 'number',
   );
   return ok.sort((a, b) => b.openedAt - a.openedAt).slice(0, MAX_RECENT);
+}
+
+/** A palette the user saved to their library ("My palettes"). */
+export interface SavedPalette {
+  id: string;
+  name: string;
+  /** `#rrggbbaa`, lowercase. */
+  colors: string[];
+  /** Milliseconds since the epoch. */
+  createdAt: number;
+}
+
+export const MAX_SAVED_PALETTES = 200;
+export const MAX_PALETTE_COLORS = 256;
+export const MAX_PALETTE_NAME = 60;
+const MAX_PALETTE_ID = 100;
+
+const PALETTE_COLOR = /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+/** `#rrggbb` or `#rrggbbaa` → lowercase `#rrggbbaa`; anything else → null. */
+const paletteColor = (v: unknown): string | null =>
+  typeof v === 'string' && PALETTE_COLOR.test(v)
+    ? (v.length === 7 ? `${v}ff` : v).toLowerCase()
+    : null;
+
+/**
+ * Turns one palette (a stored entry, an IPC payload) into a valid one, or null
+ * if it has no id, no usable colors or no creation time. Bad colors are
+ * dropped, the rest normalized; the name is trimmed and shortened.
+ */
+export function sanitizePalette(input: unknown): SavedPalette | null {
+  if (!input || typeof input !== 'object') return null;
+  const o = input as Record<string, unknown>;
+  if (typeof o.id !== 'string' || !o.id || o.id.length > MAX_PALETTE_ID) return null;
+  if (typeof o.createdAt !== 'number' || !Number.isFinite(o.createdAt)) return null;
+  if (!Array.isArray(o.colors)) return null;
+  const colors = o.colors
+    .map(paletteColor)
+    .filter((c): c is string => c !== null)
+    .slice(0, MAX_PALETTE_COLORS);
+  if (colors.length === 0) return null;
+  const name = (typeof o.name === 'string' ? o.name.trim() : '').slice(0, MAX_PALETTE_NAME).trim();
+  return { id: o.id, name: name || 'Untitled', colors, createdAt: o.createdAt };
+}
+
+/** Keeps only well-formed palettes with unique ids, newest first, at most MAX_SAVED_PALETTES. */
+export function sanitizePalettes(input: unknown): SavedPalette[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  return input
+    .map(sanitizePalette)
+    .filter((p): p is SavedPalette => p !== null)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .filter((p) => !seen.has(p.id) && !!seen.add(p.id))
+    .slice(0, MAX_SAVED_PALETTES);
+}
+
+/**
+ * Adds `palette` (already sanitized) to the library, or replaces the one with
+ * the same id. Null when it's new and the library is full.
+ */
+export function upsertPalette(
+  list: readonly SavedPalette[],
+  palette: SavedPalette,
+): SavedPalette[] | null {
+  const rest = list.filter((p) => p.id !== palette.id);
+  if (rest.length === list.length && list.length >= MAX_SAVED_PALETTES) return null;
+  return [palette, ...rest].sort((a, b) => b.createdAt - a.createdAt);
 }

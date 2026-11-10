@@ -156,7 +156,7 @@ export function initialState(sprite: Sprite): EditorState {
     zoom: 8,
     panX: 0,
     panY: 0,
-    showGrid: true,
+    showGrid: false,
     panning: false,
     cursor: null,
     selection: null,

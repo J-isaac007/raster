@@ -124,7 +124,15 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
   },
   {
     label: 'Palette',
-    items: ['palette.editColor', 'palette.indexed', '-', 'palette.import', 'palette.export'],
+    items: [
+      'palette.browse',
+      'palette.import',
+      'palette.save',
+      'palette.export',
+      '-',
+      'palette.editColor',
+      'palette.indexed',
+    ],
   },
   {
     label: 'Help',

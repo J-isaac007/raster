@@ -4,6 +4,7 @@ import { clampSpriteSize } from '@core/sprite';
 import { baseName, forgetFileHandle, openProjectFile } from '@platform/files';
 import { imageFileToSprite } from '@platform/image';
 import { readRecentFile } from '@platform/recent';
+import { importPaletteFile, isPaletteFile } from './palettes';
 
 /** Starts a blank sprite, after confirming if there are unsaved changes. Returns false if cancelled. */
 export function newSprite(editor: Editor, width: number, height: number): boolean {
@@ -20,8 +21,15 @@ export async function openRecent(editor: Editor, path: string, name: string): Pr
   else editor.notify(`${name} was moved or deleted`);
 }
 
-/** Opens a `.raster` project or an image as a new document. */
+/**
+ * Opens a `.raster` project or an image as a new document. Palette files are
+ * imported into My palettes and applied to the open sprite instead.
+ */
 export async function openAnyFile(editor: Editor, file: File): Promise<void> {
+  if (isPaletteFile(file.name)) {
+    await importPaletteFile(editor, file, { apply: true });
+    return;
+  }
   if (editor.getState().dirty && !window.confirm('Discard unsaved changes?')) return;
   try {
     if (file.name.toLowerCase().endsWith(FILE_EXTENSION)) {

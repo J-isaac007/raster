@@ -7,7 +7,7 @@ change; versions are targets, not promises. Ideas and votes are welcome in the
 
 Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 
-## 0.6: Color and paint
+## 0.7: Color and paint
 
 - HSV/HSL color wheel and recent colors
 - Color ramps with hue shifting, added straight to the palette
@@ -16,7 +16,7 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - Outline and drop shadow effects
 - More shapes: filled, rounded rectangles, polygons
 
-## 0.7: Documents and layers
+## 0.8: Documents and layers
 
 - Several sprites open at once, in tabs
 - Layer groups
@@ -25,7 +25,7 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - A better timeline: select many frames and cels, drag to move or copy, scrub
 - More onion skin options: how many frames, tint colors, opacity
 
-## 0.8: Game development
+## 0.9: Game development
 
 - Tilemap layers and tilesets
 - Slices with 9-slice and pivot points, exported with the data
@@ -34,7 +34,7 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - Open Aseprite files (`.ase`, `.aseprite`), and later save them
 - Command-line export for build scripts
 
-## 0.9: Animation and output
+## 0.10: Animation and output
 
 - APNG and animated WebP export
 - Text tool with pixel fonts
@@ -57,7 +57,9 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - 0.3: Windows desktop app, lasso and magic wand, tags, linked cels, indexed
   color
 - 0.4: custom brushes, automatic updates
-- 0.5 (next release): transform tools (RotSprite rotation, scaling, flips,
-  crop, trim); a refreshed interface with tooltips and collapsible panels; a
-  welcome screen with recent files; the command palette (`Ctrl+K`);
-  Preferences
+- 0.5: transform tools (RotSprite rotation, scaling, flips, crop, trim); a
+  refreshed interface with tooltips and collapsible panels; a welcome screen
+  with recent files; the command palette (`Ctrl+K`); Preferences
+- 0.6: palette library with 28 built-in palettes and My palettes; import
+  `.hex`, `.gpl`, `.pal`, `.txt`, `.act` and `.ase`; export `.hex`, `.gpl`,
+  `.pal`; pixel grid off by default

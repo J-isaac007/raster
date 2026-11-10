@@ -260,3 +260,110 @@
     0 0 0 2px var(--panel),
     0 0 0 3px var(--text);
 }
+
+/* ---- palette browser (Figma: Dialog / Palettes, PaletteRow) */
+
+.dialog.dialog-palettes {
+  width: min(640px, calc(100vw - 32px));
+}
+
+.palette-browser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.palette-browser .dialog-note {
+  margin: 0 !important;
+}
+
+.palette-list {
+  display: flex;
+  flex-direction: column;
+  height: min(392px, calc(100vh - 320px));
+  overflow-y: auto;
+  padding: var(--space-xs);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.palette-heading {
+  margin: 0;
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  font: var(--type-section);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.palette-empty {
+  margin: 0 !important;
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  font: var(--type-caption);
+  color: var(--text-faint) !important;
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 48px;
+  margin-bottom: var(--space-2xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+}
+
+.palette-row:hover {
+  background: var(--hover);
+}
+
+.palette-row[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+
+.palette-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.palette-row-name,
+.palette-row-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-row-name {
+  color: var(--text);
+}
+
+.palette-row-meta {
+  font: var(--type-caption);
+  color: var(--text-faint);
+}
+
+.palette-row-actions {
+  display: flex;
+  gap: var(--space-2xs);
+  visibility: hidden;
+}
+
+.palette-row:hover .palette-row-actions,
+.palette-row:focus-within .palette-row-actions {
+  visibility: visible;
+}
+
+.palette-strip-slot {
+  display: flex;
+  flex: none;
+  width: 256px;
+}
+
+.palette-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  grid-auto-rows: var(--row);
+}

@@ -1,12 +1,12 @@
 import { Minus, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toHex } from '@core/color';
-import { PRESETS } from '@core/palette';
-import { Checkbox, IconButton, PanelSection, Select, Swatch } from '../components';
+import { Button, Checkbox, IconButton, PanelSection, Swatch } from '../components';
 import { PaletteColorDialog } from '../dialogs';
 import { useEditor, useEditorState } from '../editorContext';
 
-export function PalettePanel() {
+/** The sprite's palette. `onBrowse` opens the palette library. */
+export function PalettePanel({ onBrowse }: { onBrowse: () => void }) {
   const editor = useEditor();
   const { palette, primary, indexed } = useEditorState((s) => ({
     palette: s.palette,
@@ -49,21 +49,9 @@ export function PalettePanel() {
         </>
       }
     >
-      <Select
-        aria-label="Palette preset"
-        value=""
-        onChange={(e) => {
-          const preset = PRESETS.find((p) => p.name === e.target.value);
-          if (preset) editor.setPalette([...preset.colors]);
-        }}
-      >
-        <option value="" disabled>
-          Load a preset…
-        </option>
-        {PRESETS.map((p) => (
-          <option key={p.name}>{p.name}</option>
-        ))}
-      </Select>
+      <Button className="palette-browse" title="Palette library (Ctrl+Alt+P)" onClick={onBrowse}>
+        Browse palettes…
+      </Button>
       <div className="palette" aria-label="Palette colors">
         {palette.map((c, i) => (
           <button

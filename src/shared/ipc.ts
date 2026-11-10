@@ -4,7 +4,7 @@
  * `src/preload/index.ts` only accept channels listed here.
  */
 import type { DesktopFile, OpenFileOptions, SaveFileOptions, UpdateStatus } from './api';
-import type { RecentFile, Settings } from './settings';
+import type { RecentFile, SavedPalette, Settings } from './settings';
 
 /** Page → main, with a reply (`ipcRenderer.invoke` / `ipcMain.handle`). */
 export interface InvokeChannels {
@@ -17,6 +17,10 @@ export interface InvokeChannels {
   'recent:list': () => RecentFile[];
   /** Reads a file from the recent list; any other path is refused. */
   'recent:open': (path: string) => DesktopFile | null;
+  'palettes:list': () => SavedPalette[];
+  /** Adds or replaces (same id); rejects an invalid palette or a full library. */
+  'palettes:save': (palette: SavedPalette) => SavedPalette[];
+  'palettes:delete': (id: string) => SavedPalette[];
 }
 
 /** Page → main, fire and forget (`ipcRenderer.send` / `ipcMain.on`). */

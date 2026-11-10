@@ -37,9 +37,12 @@ works offline, needs no account, and keeps your work on your machine.
   whole sprite; crop to selection and trim empty edges
 - **Symmetry**: mirror strokes horizontally, vertically or both
 - **Layers**: reorder, merge, rename, set opacity, hide and lock
-- **Colors**: primary and secondary colors with alpha, hex entry, palette
-  presets (PICO-8, Game Boy, grayscale), `.hex` and `.gpl` import/export,
-  indexed color mode and palette swapping
+- **Colors**: primary and secondary colors with alpha, hex entry, indexed
+  color mode and palette swapping
+- **Palette library**: 28 built-in palettes (PICO-8, Endesga, Resurrect 64,
+  NES, Game Boy and more, each credited in [docs/palettes.md](docs/palettes.md)),
+  plus My palettes for your own. Import `.hex`, `.gpl`, JASC `.pal`,
+  Paint.NET `.txt`, Adobe `.act` and `.ase`; export `.hex`, `.gpl` or `.pal`
 - **Full undo/redo** for every change to the document
 - **Files**: save and open `.raster` projects, import PNG and animated GIF,
   export PNG, GIF or sprite sheets at 1×–16× scale
@@ -123,6 +126,7 @@ How the code fits together: [docs/architecture.md](docs/architecture.md).
 | Swap colors                   | `X`                                     |
 | Swap a palette color          | Double-click it                         |
 | Indexed color mode            | `Shift+I`                               |
+| Browse palettes               | `Ctrl+Alt+P`                            |
 | Flip selection or layer       | `Shift+H` / `Shift+V`                   |
 | Rotate / scale selection      | `Ctrl+T`                                |
 | Sprite size (scale)           | `Ctrl+Alt+I`                            |
@@ -150,6 +154,7 @@ Done so far:
 - [x] Automatic updates
 - [x] Transform: RotSprite rotation, scaling, flips, crop and trim
 - [x] Refreshed interface, welcome screen, command palette, preferences
+- [x] Palette library: built-in palettes, My palettes, six import formats
 
 Next up: color tools (color wheel, ramps, gradients), then layer groups and
 blend modes, tilemaps and engine export. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are

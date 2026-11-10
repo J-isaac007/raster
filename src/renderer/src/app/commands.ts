@@ -1,12 +1,12 @@
 import { FormatError } from '@core/format';
-import { formatHexPalette, parsePalette } from '@core/palette';
 import type { Editor, EditorState } from '@editor/editor';
 import { readClipboardImage, writeClipboardImage } from '@platform/clipboard';
-import { baseName, downloadBlob, pickFile, saveProject } from '@platform/files';
+import { baseName, pickFile, saveProject } from '@platform/files';
 import { TOOLS } from '@editor/tools';
 import { decodeImage } from '@platform/image';
 import { clearRecent } from '@platform/recent';
 import { openAnyFile } from './openFile';
+import { exportPalette, importPaletteFile, PALETTE_ACCEPT } from './palettes';
 import { checkForUpdates } from './updates';
 
 export type DialogId =
@@ -20,6 +20,10 @@ export type DialogId =
   | 'about'
   | 'tag'
   | 'paletteColor'
+  /** The palette browser. */
+  | 'palettes'
+  /** The palette browser, naming a new entry for the current palette. */
+  | 'savePalette'
   | 'preferences'
   | 'commands'
   /** Not a dialog: shows the welcome screen in place of the editor. */
@@ -444,23 +448,30 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       run: () => editor.setIndexed(!editor.getState().indexed),
     },
     {
+      id: 'palette.browse',
+      label: 'Browse Palettes…',
+      keys: ['mod+alt+p'],
+      run: () => openDialog('palettes'),
+    },
+    {
       id: 'palette.import',
-      label: 'Load Palette…',
+      label: 'Import Palette…',
       run: async () => {
-        const file = await pickFile('.hex,.gpl,.txt');
-        if (!file) return;
-        const colors = parsePalette(await file.text());
-        if (colors.length) editor.setPalette(colors);
-        else editor.notify('No colors found in that file');
+        const file = await pickFile(PALETTE_ACCEPT);
+        if (file) await importPaletteFile(editor, file, { apply: true });
       },
     },
     {
+      id: 'palette.save',
+      label: 'Save Current Palette…',
+      run: () => openDialog('savePalette'),
+      enabled: (s) => s.palette.length > 0,
+    },
+    {
       id: 'palette.export',
-      label: 'Save Palette…',
-      run: () => {
-        const text = formatHexPalette(editor.getState().palette);
-        downloadBlob(new Blob([text], { type: 'text/plain' }), `${editor.getState().fileName}.hex`);
-      },
+      label: 'Export Palette…',
+      run: () => exportPalette(editor),
+      enabled: (s) => s.palette.length > 0,
     },
 
     {

@@ -4,9 +4,9 @@
  * only: no Node, no DOM.
  */
 
-import type { RecentFile, Settings } from './settings';
+import type { RecentFile, SavedPalette, Settings } from './settings';
 
-export type { RecentFile, Settings } from './settings';
+export type { RecentFile, SavedPalette, Settings } from './settings';
 
 export interface FileFilter {
   name: string;
@@ -30,6 +30,11 @@ export interface SaveFileOptions {
   defaultName: string;
   filters?: FileFilter[];
   data: Uint8Array;
+  /**
+   * Contents by extension (lowercase, no dot), for saves that offer several
+   * formats: the file gets the entry matching the chosen name, else `data`.
+   */
+  variants?: Record<string, Uint8Array>;
 }
 
 /** What the auto-updater is doing (see src/main/updater.ts). */
@@ -68,4 +73,13 @@ export interface RasterApi {
   /** Reads a recent file. Resolves to null if it's gone or not in the list. */
   openRecentFile(path: string): Promise<DesktopFile | null>;
   clearRecentFiles(): void;
+  /** The user's saved palettes ("My palettes"), newest first. */
+  getPalettes(): Promise<SavedPalette[]>;
+  /**
+   * Adds a palette, or replaces the one with the same id; resolves to the whole
+   * library. Rejects if the palette is invalid or the library is full.
+   */
+  savePalette(palette: SavedPalette): Promise<SavedPalette[]>;
+  /** Removes a saved palette; resolves to the whole library. */
+  deletePalette(id: string): Promise<SavedPalette[]>;
 }

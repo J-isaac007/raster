@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rgba } from './color';
 import { FormatError, parseProject, serializeProject } from './format';
-import { formatHexPalette, parsePalette } from './palette';
 import { createLayer, createSprite } from './sprite';
 
 describe('.raster format', () => {
@@ -100,25 +99,6 @@ describe('.raster format', () => {
         }),
       ),
     ).toThrow(/pixel data/);
-  });
-});
-
-describe('palette files', () => {
-  it('parses .hex lists', () => {
-    expect(parsePalette('ff0000\n00ff00\n\n#0000ff\nnot a color\n')).toEqual([
-      rgba(255, 0, 0),
-      rgba(0, 255, 0),
-      rgba(0, 0, 255),
-    ]);
-  });
-
-  it('parses GIMP palettes', () => {
-    const gpl = 'GIMP Palette\nName: Test\nColumns: 4\n#\n255   0   0\tRed\n  0 128 255 Blue\n';
-    expect(parsePalette(gpl)).toEqual([rgba(255, 0, 0), rgba(0, 128, 255)]);
-  });
-
-  it('writes .hex', () => {
-    expect(formatHexPalette([rgba(255, 0, 0), rgba(0, 0, 0, 128)])).toBe('ff0000\n00000080\n');
   });
 });
 

@@ -16,6 +16,7 @@ import {
   ExportDialog,
   GridDialog,
   NewSpriteDialog,
+  PaletteBrowserDialog,
   PaletteColorDialog,
   PreferencesDialog,
   ShortcutsDialog,
@@ -101,14 +102,16 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
 
   useEffect(() => startAutosave(editor), [editor]);
 
-  // Starting or opening a sprite leaves the welcome screen.
+  // Starting or opening a sprite leaves the welcome screen, and so does
+  // applying a palette (e.g. one dropped on the window), so its result shows.
   const documentId = useSyncExternalStore(editor.subscribe, () => editor.getState().documentId);
-  const shownDocument = useRef(documentId);
+  const palette = useSyncExternalStore(editor.subscribe, () => editor.getState().palette);
+  const shown = useRef({ documentId, palette });
   useEffect(() => {
-    if (documentId === shownDocument.current) return;
-    shownDocument.current = documentId;
+    if (documentId === shown.current.documentId && palette === shown.current.palette) return;
+    shown.current = { documentId, palette };
     setWelcome(false);
-  }, [documentId]);
+  }, [documentId, palette]);
 
   const { accent } = useSyncExternalStore(subscribeSettings, getSettings);
   useEffect(() => applyAccent(accent), [accent]);
@@ -133,7 +136,7 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
               </div>
               <aside className="sidebar">
                 <ColorPanel />
-                <PalettePanel />
+                <PalettePanel onBrowse={() => openDialog('palettes')} />
                 <ReferencePanel />
                 <LayersPanel />
               </aside>
@@ -155,6 +158,8 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
       {dialog === 'preferences' && <PreferencesDialog onClose={close} actions={actions} />}
       {dialog === 'commands' && <CommandPalette onClose={close} actions={actions} />}
       {dialog === 'tag' && <TagDialog index={null} onClose={close} />}
+      {dialog === 'palettes' && <PaletteBrowserDialog onClose={close} />}
+      {dialog === 'savePalette' && <PaletteBrowserDialog onClose={close} save />}
       {dialog === 'paletteColor' && (
         <PaletteColorDialog
           index={editor.getState().palette.indexOf(editor.getState().primary)}

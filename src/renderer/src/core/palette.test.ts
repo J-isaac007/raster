@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { rgba, TRANSPARENT } from './color';
 import {
-  formatHexPalette,
+  mergePalettes,
   nearestColor,
   paletteRemap,
   paletteSnapper,
-  parsePalette,
   recolorPixels,
 } from './palette';
 
@@ -14,14 +13,18 @@ const WHITE = rgba(255, 255, 255);
 const RED = rgba(255, 0, 0);
 const BLUE = rgba(0, 0, 255);
 
-describe('parsePalette', () => {
-  it('reads .hex and .gpl files', () => {
-    expect(parsePalette('ff0000\n#0000ff\n')).toEqual([RED, BLUE]);
-    expect(parsePalette('GIMP Palette\nName: x\n#\n255 0 0 Red\n0 0 255\n')).toEqual([RED, BLUE]);
+describe('mergePalettes', () => {
+  it('appends only the colors that are new, in order', () => {
+    expect(mergePalettes([RED, BLUE], [BLUE, WHITE, RED, BLACK, WHITE])).toEqual([
+      RED,
+      BLUE,
+      WHITE,
+      BLACK,
+    ]);
   });
 
-  it('round-trips through formatHexPalette', () => {
-    expect(parsePalette(formatHexPalette([RED, BLUE]))).toEqual([RED, BLUE]);
+  it('stops at the size limit', () => {
+    expect(mergePalettes([RED], [BLUE, WHITE, BLACK], 3)).toEqual([RED, BLUE, WHITE]);
   });
 });
 

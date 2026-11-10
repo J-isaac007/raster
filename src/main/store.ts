@@ -1,4 +1,5 @@
-// Preferences and recent files, kept in settings.json in the user-data folder.
+// Preferences, recent files and saved palettes, kept in settings.json in the
+// user-data folder.
 // Everything read from disk or sent by the page is validated (see
 // src/shared/settings.ts); writes go through a temp file so a crash mid-write
 // can't corrupt the file.
@@ -9,9 +10,14 @@ import { basename, join } from 'node:path';
 import {
   addRecent,
   DEFAULT_SETTINGS,
+  MAX_SAVED_PALETTES,
+  sanitizePalette,
+  sanitizePalettes,
   sanitizeRecent,
   sanitizeSettings,
+  upsertPalette,
   type RecentFile,
+  type SavedPalette,
   type Settings,
 } from '@shared/settings';
 import { handle, on } from './ipc';
@@ -19,6 +25,7 @@ import { handle, on } from './ipc';
 interface Stored {
   settings: Settings;
   recent: RecentFile[];
+  palettes: SavedPalette[];
 }
 
 let data: Stored | null = null;
@@ -30,9 +37,13 @@ function load(): Stored {
   if (data) return data;
   try {
     const raw = JSON.parse(readFileSync(storeFile(), 'utf8'));
-    data = { settings: sanitizeSettings(raw?.settings), recent: sanitizeRecent(raw?.recent) };
+    data = {
+      settings: sanitizeSettings(raw?.settings),
+      recent: sanitizeRecent(raw?.recent),
+      palettes: sanitizePalettes(raw?.palettes),
+    };
   } catch {
-    data = { settings: { ...DEFAULT_SETTINGS }, recent: [] };
+    data = { settings: { ...DEFAULT_SETTINGS }, recent: [], palettes: [] };
   }
   return data;
 }
@@ -81,6 +92,28 @@ export function rememberRecent(path: string): void {
   app.addRecentDocument(path);
 }
 
+/** Adds a palette to the library, or replaces the one with the same id. */
+export function savePalette(input: unknown): SavedPalette[] {
+  const palette = sanitizePalette(input);
+  if (!palette) throw new Error('Invalid palette');
+  const d = load();
+  const next = upsertPalette(d.palettes, palette);
+  if (!next) throw new Error(`The palette library is full (${MAX_SAVED_PALETTES} palettes)`);
+  d.palettes = next;
+  save();
+  return next;
+}
+
+export function deletePalette(id: unknown): SavedPalette[] {
+  const d = load();
+  const next = d.palettes.filter((p) => p.id !== id);
+  if (next.length !== d.palettes.length) {
+    d.palettes = next;
+    save();
+  }
+  return d.palettes;
+}
+
 export function registerStoreHandlers(): void {
   handle('settings:get', () => getSettings());
   handle('settings:set', (_event, patch) => updateSettings(patch));
@@ -90,4 +123,7 @@ export function registerStoreHandlers(): void {
     save();
     app.clearRecentDocuments();
   });
+  handle('palettes:list', () => load().palettes);
+  handle('palettes:save', (_event, palette) => savePalette(palette));
+  handle('palettes:delete', (_event, id) => deletePalette(id));
 }

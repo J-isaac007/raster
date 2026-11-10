@@ -6,6 +6,7 @@ import { startPreferences } from '@app/preferences';
 import { startUpdates } from '@app/updates';
 import { Editor } from '@editor/editor';
 import { desktop, toFile } from '@platform/desktop';
+import { refreshSavedPalettes } from '@platform/palettes';
 import { refreshRecent } from '@platform/recent';
 import { getSettings, loadSettings } from '@platform/settings';
 import { App } from '@ui/App';
@@ -19,6 +20,7 @@ import './styles/index.css';
 await loadSettings();
 applyAccent(getSettings().accent);
 void refreshRecent();
+void refreshSavedPalettes();
 
 const editor = new Editor();
 startPreferences(editor);

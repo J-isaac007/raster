@@ -4,7 +4,7 @@
 import { app, BrowserWindow, dialog, type WebContents } from 'electron';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { basename, extname, join, resolve } from 'node:path';
 import type { DesktopFile } from '@shared/api';
 import { emit, handle, on } from './ipc';
 import { isRecent, rememberRecent } from './store';
@@ -75,7 +75,11 @@ export function registerFileHandlers(): void {
       if (result.canceled || !result.filePath) return null;
       target = result.filePath;
     }
-    await writeFile(target, Buffer.from(options.data));
+    const ext = extname(target).slice(1).toLowerCase();
+    const variant = options.variants
+      ? Object.entries(options.variants).find(([k]) => k === ext)
+      : null;
+    await writeFile(target, Buffer.from(variant ? variant[1] : options.data));
     trustedPaths.add(target);
     // Exports are saved this way too; only projects count as recent.
     if (PROJECT.test(target)) rememberRecent(target);

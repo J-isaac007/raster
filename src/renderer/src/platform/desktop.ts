@@ -24,6 +24,9 @@ const MIME: Record<string, string> = {
   hex: 'text/plain',
   gpl: 'text/plain',
   txt: 'text/plain',
+  pal: 'text/plain',
+  act: 'application/octet-stream',
+  ase: 'application/octet-stream',
 };
 
 const extOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1].toLowerCase() ?? '';

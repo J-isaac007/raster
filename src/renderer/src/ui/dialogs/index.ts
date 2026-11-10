@@ -3,6 +3,7 @@ export { CanvasSizeDialog } from './CanvasSizeDialog';
 export { ExportDialog } from './ExportDialog';
 export { GridDialog } from './GridDialog';
 export { NewSpriteDialog } from './NewSpriteDialog';
+export { PaletteBrowserDialog } from './PaletteBrowserDialog';
 export { PaletteColorDialog } from './PaletteColorDialog';
 export { PreferencesDialog } from './PreferencesDialog';
 export { ShortcutsDialog } from './ShortcutsDialog';
