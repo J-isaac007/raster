@@ -15,9 +15,6 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - Adjust hue, saturation and lightness; replace color; invert; desaturate
 - Outline and drop shadow effects
 - More shapes: filled, rounded rectangles, polygons
-- Transform with the mouse: drag handles on the canvas to scale and rotate,
-  with Shift for proportions and 15° steps, and Alt to scale from the center
-  (done)
 
 ## 0.8: Documents and layers
 
@@ -66,3 +63,5 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - 0.6: palette library with 28 built-in palettes and My palettes; import
   `.hex`, `.gpl`, `.pal`, `.txt`, `.act` and `.ase`; export `.hex`, `.gpl`,
   `.pal`; pixel grid off by default
+- 0.6.1: transform with the mouse: drag handles on the canvas to scale and
+  rotate, with the numbers in the tool options bar

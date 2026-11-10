@@ -156,6 +156,7 @@ Done so far:
 - [x] Transform: RotSprite rotation, scaling, flips, crop and trim
 - [x] Refreshed interface, welcome screen, command palette, preferences
 - [x] Palette library: built-in palettes, My palettes, six import formats
+- [x] Transform with the mouse: scale and rotate handles on the canvas
 
 Next up: color tools (color wheel, ramps, gradients), then layer groups and
 blend modes, tilemaps and engine export. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are
