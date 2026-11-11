@@ -1,11 +1,15 @@
 export { AboutDialog } from './AboutDialog';
 export { CanvasSizeDialog } from './CanvasSizeDialog';
+export { DropShadowDialog } from './DropShadowDialog';
 export { ExportDialog } from './ExportDialog';
 export { GridDialog } from './GridDialog';
+export { HueSaturationDialog } from './HueSaturationDialog';
 export { NewSpriteDialog } from './NewSpriteDialog';
+export { OutlineDialog } from './OutlineDialog';
 export { PaletteBrowserDialog } from './PaletteBrowserDialog';
 export { PaletteColorDialog } from './PaletteColorDialog';
 export { PreferencesDialog } from './PreferencesDialog';
+export { ReplaceColorDialog } from './ReplaceColorDialog';
 export { ShortcutsDialog } from './ShortcutsDialog';
 export { SpriteSizeDialog } from './SpriteSizeDialog';
 export { TagDialog } from './TagDialog';

@@ -1,3 +1,4 @@
+import type { Adjustment } from '@core/adjust';
 import { makeCustomBrush } from '@core/brush';
 import { blend, TRANSPARENT, type Color } from '@core/color';
 import { History, type Command } from '@core/history';
@@ -14,6 +15,7 @@ import {
 import type { Project } from '@core/format';
 import type { Tag } from '@core/tags';
 import type { Transform, TransformQuality } from '@core/transform';
+import { EditorAdjust } from './adjust';
 import type { EditorCore } from './core';
 import { EditorFrames } from './frames';
 import { EditorFreeTransform, type FreeTransformParams } from './freeTransform';
@@ -69,6 +71,12 @@ export class Editor {
   private readonly frames = new EditorFrames(this.core);
   private readonly geometry = new EditorGeometry(this.core, this.view);
   private readonly freeTransform = new EditorFreeTransform(this.core, this.selection);
+  private readonly adjustments = new EditorAdjust(
+    this.core,
+    this.strokes,
+    this.selection,
+    this.palette,
+  );
 
   constructor(sprite: Sprite = createSprite(32, 32)) {
     this.sprite = sprite;
@@ -125,7 +133,8 @@ export class Editor {
   private createCore(): EditorCore {
     const sprite = () => this.sprite;
     const activeLayer = () => this.activeLayer;
-    const stroking = () => this.stroking;
+    // An open adjustment preview counts as a stroke, so other edits wait for it.
+    const stroking = () => this.stroking || this.adjustments.active;
     return {
       get sprite() {
         return sprite();
@@ -182,6 +191,7 @@ export class Editor {
   ): void {
     this.strokes.discard();
     this.freeTransform.discard();
+    this.adjustments.discard();
     this.selection.discard();
     this.sprite = sprite;
     this.history.clear();
@@ -242,6 +252,11 @@ export class Editor {
   // ---- history --------------------------------------------------------------
 
   undo(): void {
+    // Undo while an adjustment previews backs out of the adjustment itself.
+    if (this.adjustments.active) {
+      this.adjustments.cancel();
+      return;
+    }
     if (this.stroking) return;
     // Undo during a transform backs out of the transform itself.
     if (this.freeTransform.active) {
@@ -257,6 +272,7 @@ export class Editor {
   }
 
   redo(): void {
+    this.adjustments.cancel();
     if (this.stroking) return;
     this.settle();
     const cmd = this.history.redo();
@@ -420,6 +436,28 @@ export class Editor {
     this.freeTransform.set(patch, quality);
   applyTransform = () => this.freeTransform.apply();
   cancelTransform = () => this.freeTransform.cancel();
+
+  // ---- Adjust menu (adjust.ts) ---------------------------------------------
+
+  /** True while an adjustment previews on the canvas. */
+  get adjusting(): boolean {
+    return this.adjustments.active;
+  }
+  /**
+   * Starts previewing an adjustment on the selection, or the active layer's
+   * current cel with nothing selected. False if the layer can't be edited.
+   */
+  beginAdjust = (kind: Adjustment['kind']) => this.adjustments.begin(kind);
+  /** Shows `a` on the canvas, or the original pixels when null. */
+  previewAdjust = (a: Adjustment | null) => this.adjustments.preview(a);
+  /** Commits `a` as one undo step and ends the preview. */
+  applyAdjust = (a: Adjustment) => this.adjustments.apply(a);
+  /** Ends the preview, putting the pixels back. Leaves no undo step. */
+  cancelAdjust = () => this.adjustments.cancel();
+  /** Applies an adjustment at once, without a preview (Invert, Desaturate). */
+  adjust = (a: Adjustment) => {
+    if (this.adjustments.begin(a.kind)) this.adjustments.apply(a);
+  };
 
   // ---- frames (frames.ts) ---------------------------------------------------
 

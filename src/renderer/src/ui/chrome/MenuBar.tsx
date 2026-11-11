@@ -79,6 +79,18 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
     ],
   },
   {
+    label: 'Adjust',
+    items: [
+      'adjust.hueSaturation',
+      'adjust.replaceColor',
+      'adjust.invert',
+      'adjust.desaturate',
+      '-',
+      'adjust.outline',
+      'adjust.dropShadow',
+    ],
+  },
+  {
     label: 'Layer',
     items: ['layer.new', 'layer.duplicate', 'layer.delete', '-', 'layer.mergeDown'],
   },

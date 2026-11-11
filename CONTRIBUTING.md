@@ -72,7 +72,8 @@ src/
         canvas/         The drawing surface (renders outside React for speed)
         chrome/         Menu bar, toolbar, tool options, status bar, logo
         panels/         Color, palette, layers, reference, timeline
-        dialogs/        One file per dialog, plus the shared Dialog shell
+        dialogs/        One file per dialog, plus the shared Dialog shell and
+                        AdjustDialog (the docked shell of the Adjust menu's dialogs)
         screens/        Welcome screen and command palette
         theme.ts        Accent colors chosen in Preferences
       styles/    tokens.css (design tokens), components.css, then one stylesheet
@@ -99,6 +100,8 @@ core/     Pure TypeScript. No DOM, no React. Fully unit tested.
     sheet.ts     Sprite sheet layout and JSON metadata
     transform.ts Quarter turns, flips, nearest scaling, RotSprite, trim bounds
     transformBox.ts Transform handles: hit testing, scale/rotate drag math
+    adjust.ts    Adjust menu: hue/saturation, replace color, invert, desaturate,
+                 outline, drop shadow
 editor/   The document store. No DOM, no React.
     editor.ts    The Editor: one store for document, history and UI state.
                  Delegates to the modules below, which see it via core.ts.
@@ -107,6 +110,7 @@ editor/   The document store. No DOM, no React.
     strokes.ts   Pixel edits from tools (dab, fill, shade), one undo step each
     selection.ts Selection, floating pixels, copy/cut/paste
     freeTransform.ts The open Ctrl+T transform: live preview, apply, cancel
+    adjust.ts    Adjust menu previews on the selection or cel: apply, cancel
     layers.ts    Layer stack: add, delete, reorder, merge, flip, properties
     frames.ts    Animation frames, linked cels, tags, durations, playback
     palette.ts   Palette changes, palette swaps and indexed color mode

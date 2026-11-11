@@ -25,6 +25,11 @@ export type DialogId =
   | 'savePalette'
   | 'preferences'
   | 'commands'
+  /** The Adjust menu's dialogs, which preview on the canvas. */
+  | 'hueSaturation'
+  | 'replaceColor'
+  | 'outline'
+  | 'dropShadow'
   /** Not a dialog: shows the welcome screen in place of the editor. */
   | 'welcome';
 
@@ -305,6 +310,24 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       enabled: hasSelection,
     },
     { id: 'sprite.trim', label: 'Trim Empty Edges', run: () => editor.trim() },
+
+    // Adjustments act on the selection, or the active layer's cel when nothing is selected.
+    {
+      id: 'adjust.hueSaturation',
+      label: 'Hue/Saturation…',
+      keys: ['mod+u'],
+      run: () => openDialog('hueSaturation'),
+    },
+    { id: 'adjust.replaceColor', label: 'Replace Color…', run: () => openDialog('replaceColor') },
+    { id: 'adjust.invert', label: 'Invert', run: () => editor.adjust({ kind: 'invert' }) },
+    {
+      id: 'adjust.desaturate',
+      label: 'Desaturate',
+      keys: ['mod+shift+u'],
+      run: () => editor.adjust({ kind: 'desaturate' }),
+    },
+    { id: 'adjust.outline', label: 'Outline…', run: () => openDialog('outline') },
+    { id: 'adjust.dropShadow', label: 'Drop Shadow…', run: () => openDialog('dropShadow') },
 
     { id: 'layer.new', label: 'New Layer', keys: ['shift+n'], run: () => editor.addLayer() },
     {

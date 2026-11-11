@@ -46,6 +46,11 @@ export class EditorStrokes {
     return this.stroke !== null;
   }
 
+  /** The stroke's layer and its pixels as they were when it began, or null. */
+  get strokeBase(): { layer: Layer; base: Uint32Array } | null {
+    return this.stroke && { layer: this.stroke.layer, base: this.stroke.base };
+  }
+
   /** Drops the stroke without recording it (the document is being replaced). */
   discard(): void {
     this.stroke = null;
