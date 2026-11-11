@@ -177,7 +177,13 @@ export class Editor {
   /** Replaces the whole document. Clears history. */
   load(
     sprite: Sprite,
-    options: { palette?: Color[]; indexed?: boolean; fileName?: string; dirty?: boolean } = {},
+    options: {
+      palette?: Color[];
+      indexed?: boolean;
+      recentColors?: Color[];
+      fileName?: string;
+      dirty?: boolean;
+    } = {},
   ): void {
     this.strokes.discard();
     this.freeTransform.discard();
@@ -192,6 +198,7 @@ export class Editor {
       activeLayerId: sprite.layers[sprite.layers.length - 1].id,
       palette: options.palette?.length ? options.palette : this.state.palette,
       indexed: options.indexed ?? false,
+      recentColors: options.recentColors ?? [],
       fileName: options.fileName ?? 'untitled',
       dirty: options.dirty ?? false,
       documentId: this.state.documentId + 1,
@@ -206,7 +213,12 @@ export class Editor {
 
   /** The document as saved to a `.raster` file. */
   get project(): Project {
-    return { sprite: this.sprite, palette: this.state.palette, indexed: this.state.indexed };
+    return {
+      sprite: this.sprite,
+      palette: this.state.palette,
+      indexed: this.state.indexed,
+      recentColors: this.state.recentColors,
+    };
   }
 
   markSaved(fileName: string): void {
@@ -328,8 +340,11 @@ export class Editor {
     this.set(patch);
   }
 
-  /** Picks the visible (flattened) color under (x, y). */
-  pickColor(x: number, y: number, target: 'primary' | 'secondary'): void {
+  /**
+   * Picks the visible (flattened) color under (x, y) and remembers it in the
+   * recent colors. Pass `remember: false` while a pick is still being dragged.
+   */
+  pickColor(x: number, y: number, target: 'primary' | 'secondary', remember = true): void {
     [x, y] = this.wrap(x, y);
     if (!inBounds(this.sprite, x, y)) return;
     let color: Color = TRANSPARENT;
@@ -337,15 +352,26 @@ export class Editor {
       if (layer.visible) color = blend(color, getPixel(layer, x, y), layer.opacity);
     }
     color = this.palette.snap(color);
-    if (color === this.state[target]) return;
-    this.set(target === 'primary' ? { primary: color } : { secondary: color });
+    if (color !== this.state[target]) {
+      this.set(target === 'primary' ? { primary: color } : { secondary: color });
+    }
+    if (remember) this.rememberColor(color);
   }
+
+  /**
+   * Adds a committed drawing color to the recent colors (newest first, no
+   * repeats, at most 16). Call it when a pick or edit is finished, not on every
+   * drag move. Doesn't make the document dirty.
+   */
+  rememberColor = (c: Color) => this.palette.rememberColor(c);
 
   // ---- palette & indexed color (palette.ts) ---------------------------------
 
   setPalette = (palette: Color[]) => this.palette.setPalette(palette);
   setPaletteColor = (index: number, color: Color) => this.palette.setPaletteColor(index, color);
   setIndexed = (indexed: boolean) => this.palette.setIndexed(indexed);
+  /** Puts a ramp from `makeRamp` into the palette around `base`, as one undo step. */
+  addRamp = (base: Color, ramp: Color[]) => this.palette.addRamp(base, ramp);
 
   // ---- layers (layers.ts) ---------------------------------------------------
 

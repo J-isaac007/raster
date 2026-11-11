@@ -68,7 +68,8 @@ src/
         App.tsx         Layout and dialogs
         editorContext.ts React bindings (useEditor, useEditorState)
         components/     Shared primitives: Button, IconButton, Chip, TextInput, Select,
-                        Checkbox, Slider, Swatch, PanelSection, Kbd, TooltipLayer
+                        Checkbox, Slider, Swatch, ColorWheel, PanelSection, Kbd,
+                        TooltipLayer
         canvas/         The drawing surface (renders outside React for speed)
         chrome/         Menu bar, toolbar, tool options, status bar, logo
         panels/         Color, palette, layers, reference, timeline
@@ -91,6 +92,7 @@ core/     Pure TypeScript. No DOM, no React. Fully unit tested.
     tags.ts      Animation tags (named frame ranges) and tag-aware playback
     history.ts   Undo/redo stack and sparse pixel patches
     palette.ts   Palette presets, .hex/.gpl parsing, nearest color, remapping
+    ramp.ts      Hue-shifted color ramps and putting them into a palette
     format.ts    The .raster project file format
     brush.ts     Dither patterns, pixel-perfect filter, shading
     gif.ts       GIF encoder (gifDecode.ts decodes, quantize.ts reduces colors)

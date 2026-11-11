@@ -33,8 +33,8 @@ export async function openAnyFile(editor: Editor, file: File): Promise<void> {
   if (editor.getState().dirty && !window.confirm('Discard unsaved changes?')) return;
   try {
     if (file.name.toLowerCase().endsWith(FILE_EXTENSION)) {
-      const { sprite, palette, indexed } = await openProjectFile(file);
-      editor.load(sprite, { palette, indexed, fileName: baseName(file.name) });
+      const { sprite, palette, indexed, recentColors } = await openProjectFile(file);
+      editor.load(sprite, { palette, indexed, recentColors, fileName: baseName(file.name) });
     } else if (file.type.startsWith('image/')) {
       forgetFileHandle();
       editor.load(await imageFileToSprite(file), { fileName: baseName(file.name), dirty: true });

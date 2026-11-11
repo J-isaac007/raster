@@ -64,6 +64,12 @@ export interface EditorState {
   palette: Color[];
   /** Indexed color mode: pixels and drawing colors always come from the palette. */
   indexed: boolean;
+  /**
+   * Colors recently committed as a drawing color, newest first, at most
+   * `MAX_RECENT_COLORS`. Saved with the document; changing them alone doesn't
+   * make it dirty.
+   */
+  recentColors: Color[];
   brushSize: number;
   /** A brush made from a selection; replaces the square brush while set. */
   customBrush: CustomBrush | null;
@@ -159,6 +165,7 @@ export function initialState(sprite: Sprite): EditorState {
     secondary: TRANSPARENT,
     palette: [...DEFAULT_PALETTE],
     indexed: false,
+    recentColors: [],
     brushSize: 1,
     customBrush: null,
     brushMode: 'image',

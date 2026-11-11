@@ -7,7 +7,8 @@ import { cleanTag, type Tag } from './tags';
  * row-major from the top-left, base64 encoded. See docs/file-format.md.
  */
 export const FILE_EXTENSION = '.raster';
-export const FORMAT_VERSION = 4;
+export const FORMAT_VERSION = 5;
+export const MAX_RECENT_COLORS = 16;
 export const MAX_FRAMES = 1000;
 
 interface LayerJson {
@@ -36,6 +37,8 @@ interface RasterFileJson {
   tags?: Tag[];
   /** v4+. Absent means `rgb`. */
   colorMode?: 'rgb' | 'indexed';
+  /** v5+. Recently used drawing colors, newest first. */
+  recentColors?: string[];
   layers: LayerJson[];
 }
 
@@ -44,6 +47,8 @@ export interface Project {
   palette: Color[];
   /** Indexed color mode (pixels limited to the palette). */
   indexed?: boolean;
+  /** Recently used drawing colors, newest first, at most `MAX_RECENT_COLORS`. */
+  recentColors?: Color[];
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -67,7 +72,7 @@ function fromBase64(text: string): Uint8Array {
   return bytes;
 }
 
-export function serializeProject({ sprite, palette, indexed }: Project): string {
+export function serializeProject({ sprite, palette, indexed, recentColors }: Project): string {
   const file: RasterFileJson = {
     format: 'raster',
     version: FORMAT_VERSION,
@@ -77,6 +82,7 @@ export function serializeProject({ sprite, palette, indexed }: Project): string 
     frames: sprite.frames.map((f) => ({ duration: f.duration })),
     tags: sprite.tags.map(({ name, from, to }) => ({ name, from, to })),
     colorMode: indexed ? 'indexed' : 'rgb',
+    recentColors: (recentColors ?? []).map((c) => toHex(c)),
     layers: sprite.layers.map((l) => ({
       name: l.name,
       visible: l.visible,
@@ -162,9 +168,17 @@ export function parseProject(text: string): Project {
     .map((h) => fromHex(String(h)))
     .filter((c): c is Color => c !== null);
 
+  const recentColors = (
+    json.version >= 5 && Array.isArray(json.recentColors) ? json.recentColors : []
+  )
+    .map((h) => fromHex(String(h)))
+    .filter((c, i, all): c is Color => c !== null && all.indexOf(c) === i)
+    .slice(0, MAX_RECENT_COLORS);
+
   return {
     sprite: { width, height, layers, frames, tags },
     palette,
     indexed: json.colorMode === 'indexed',
+    recentColors,
   };
 }

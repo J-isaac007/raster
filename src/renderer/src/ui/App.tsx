@@ -19,6 +19,7 @@ import {
   PaletteBrowserDialog,
   PaletteColorDialog,
   PreferencesDialog,
+  RampDialog,
   ShortcutsDialog,
   SpriteSizeDialog,
   TagDialog,
@@ -164,6 +165,7 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
       {dialog === 'tag' && <TagDialog index={null} onClose={close} />}
       {dialog === 'palettes' && <PaletteBrowserDialog onClose={close} />}
       {dialog === 'savePalette' && <PaletteBrowserDialog onClose={close} save />}
+      {dialog === 'ramp' && <RampDialog onClose={close} />}
       {dialog === 'paletteColor' && (
         <PaletteColorDialog
           index={editor.getState().palette.indexOf(editor.getState().primary)}

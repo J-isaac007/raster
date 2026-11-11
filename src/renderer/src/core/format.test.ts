@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rgba } from './color';
-import { FormatError, parseProject, serializeProject } from './format';
+import { FormatError, MAX_RECENT_COLORS, parseProject, serializeProject } from './format';
 import { createLayer, createSprite } from './sprite';
 
 describe('.raster format', () => {
@@ -74,6 +74,41 @@ describe('.raster format', () => {
     json.version = 3;
     delete json.colorMode;
     expect(parseProject(JSON.stringify(json)).indexed).toBe(false);
+  });
+
+  it('round-trips recent colors as hex (version 5)', () => {
+    const sprite = createSprite(1, 1);
+    const recentColors = [rgba(255, 0, 77), rgba(41, 173, 255, 128), rgba(0, 0, 0)];
+    const text = serializeProject({ sprite, palette: [], recentColors });
+    const json = JSON.parse(text);
+    expect(json.version).toBe(5);
+    expect(json.recentColors).toEqual(['#ff004d', '#29adff80', '#000000']);
+    expect(parseProject(text).recentColors).toEqual(recentColors);
+    expect(JSON.parse(serializeProject({ sprite, palette: [] })).recentColors).toEqual([]);
+  });
+
+  it('reads recent colors from version 4 and older files as none', () => {
+    const json = JSON.parse(
+      serializeProject({ sprite: createSprite(1, 1), palette: [], recentColors: [rgba(1, 2, 3)] }),
+    );
+    json.version = 4;
+    expect(parseProject(JSON.stringify(json)).recentColors).toEqual([]);
+    delete json.recentColors;
+    expect(parseProject(JSON.stringify(json)).recentColors).toEqual([]);
+  });
+
+  it('skips bad and repeated recent colors and keeps at most 16', () => {
+    const json = JSON.parse(serializeProject({ sprite: createSprite(1, 1), palette: [] }));
+    json.recentColors = ['#ff0000', 'nope', 7, '#ff0000', '#00ff00'];
+    expect(parseProject(JSON.stringify(json)).recentColors).toEqual([
+      rgba(255, 0, 0),
+      rgba(0, 255, 0),
+    ]);
+    json.recentColors = Array.from(
+      { length: 20 },
+      (_, i) => `#0000${(i + 1).toString(16).padStart(2, '0')}`,
+    );
+    expect(parseProject(JSON.stringify(json)).recentColors).toHaveLength(MAX_RECENT_COLORS);
   });
 
   it('rejects links to the same or a later frame', () => {

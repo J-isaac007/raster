@@ -6,6 +6,7 @@ export { NewSpriteDialog } from './NewSpriteDialog';
 export { PaletteBrowserDialog } from './PaletteBrowserDialog';
 export { PaletteColorDialog } from './PaletteColorDialog';
 export { PreferencesDialog } from './PreferencesDialog';
+export { RampDialog } from './RampDialog';
 export { ShortcutsDialog } from './ShortcutsDialog';
 export { SpriteSizeDialog } from './SpriteSizeDialog';
 export { TagDialog } from './TagDialog';
