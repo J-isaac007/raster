@@ -6,7 +6,39 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.6.1] - 2026-11-10
+## [0.7.0] - 2026-11-11
+
+### Added
+
+- Color picker in the Color panel: drag in the saturation/brightness square
+  and along the hue bar to pick a color.
+- Recent colors: the colors you pick show as swatches under the wheel (left
+  click sets the primary color, right click the secondary). They're saved with
+  the sprite and in the autosave.
+- Palette › New Ramp…: builds a hue-shifted ramp around the primary color,
+  with shadows turning toward blue and highlights toward yellow, and puts it
+  into the palette around that color, ready for the Shade tool.
+- Gradient tool (`R`): linear or radial, from the primary to the secondary
+  color in ordered-dither steps. It fills the selection, or the whole layer.
+  Right-drag swaps the colors, and `Shift` snaps the angle.
+- Polygon tool (`P`): regular polygons with 3 to 12 sides, outlined or
+  filled. Drag from the center to a corner; `Shift` snaps the rotation to 15°.
+- Rounded rectangles: a Radius setting on the Rectangle tool.
+- Adjust menu, acting on the selection or the whole layer:
+  - Hue/Saturation… (`Ctrl+U`): shift hue, saturation and lightness.
+  - Replace Color…: swap one color for another, with a tolerance.
+  - Invert, and Desaturate (`Ctrl+Shift+U`).
+  - Outline…: draw a one-pixel outline around the art in any color, with or
+    without diagonal corners.
+  - Drop Shadow…: add an offset shadow in any color.
+
+  The dialogs sit beside the canvas so the art stays in view, preview live,
+  and apply as one undo step. In indexed color, results snap to the palette.
+
+### Changed
+
+- `.raster` files are now version 5, which adds the sprite's recent colors.
+  Older files open as before. - 2026-11-10
 
 ### Fixed
 

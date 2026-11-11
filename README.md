@@ -20,8 +20,9 @@ works offline, needs no account, and keeps your work on your machine.
 
 ## Features
 
-- **Drawing tools**: pencil, eraser, shade, flood fill, line, rectangle,
-  ellipse and color picker, with brush sizes from 1 to 32 px
+- **Drawing tools**: pencil, eraser, shade, flood fill, dithered gradient,
+  line, rectangle (with rounded corners), ellipse, polygon and color picker,
+  with brush sizes from 1 to 32 px
 - **Custom brushes**: turn any selection into a brush that stamps its own
   colors or the current color
 - **Pixel art brushes**: pixel-perfect strokes, ordered dithering and
@@ -38,8 +39,11 @@ works offline, needs no account, and keeps your work on your machine.
   or the whole sprite; crop to selection and trim empty edges
 - **Symmetry**: mirror strokes horizontally, vertically or both
 - **Layers**: reorder, merge, rename, set opacity, hide and lock
-- **Colors**: primary and secondary colors with alpha, hex entry, indexed
-  color mode and palette swapping
+- **Colors**: color wheel, primary and secondary colors with alpha, hex
+  entry, recent colors saved with the sprite, hue-shifted ramps for shading,
+  indexed color mode and palette swapping
+- **Adjust**: hue/saturation, replace color, invert, desaturate, outline and
+  drop shadow, with live previews on the selection or layer
 - **Palette library**: 28 built-in palettes (PICO-8, Endesga, Resurrect 64,
   NES, Game Boy and more, each credited in [docs/palettes.md](docs/palettes.md)),
   plus My palettes for your own. Import `.hex`, `.gpl`, JASC `.pal`,
@@ -128,6 +132,7 @@ How the code fits together: [docs/architecture.md](docs/architecture.md).
 | Swap a palette color          | Double-click it                         |
 | Indexed color mode            | `Shift+I`                               |
 | Browse palettes               | `Ctrl+Alt+P`                            |
+| Hue/saturation / desaturate   | `Ctrl+U` / `Ctrl+Shift+U`               |
 | Flip selection or layer       | `Shift+H` / `Shift+V`                   |
 | Rotate / scale with handles   | `Ctrl+T`, then `Enter` / `Esc`          |
 | Sprite size (scale)           | `Ctrl+Alt+I`                            |
@@ -157,9 +162,9 @@ Done so far:
 - [x] Refreshed interface, welcome screen, command palette, preferences
 - [x] Palette library: built-in palettes, My palettes, six import formats
 - [x] Transform with the mouse: scale and rotate handles on the canvas
+- [x] Color and paint: color wheel, ramps, gradients, polygons, Adjust menu
 
-Next up: color tools (color wheel, ramps, gradients), then layer groups and
-blend modes, tilemaps and engine export. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are
+Next up: tabs, layer groups and blend modes, then tilemaps and engine export. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are
 welcome in the issue tracker.
 
 ## Privacy

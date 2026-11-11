@@ -7,15 +7,6 @@ change; versions are targets, not promises. Ideas and votes are welcome in the
 
 Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 
-## 0.7: Color and paint
-
-- HSV/HSL color wheel and recent colors
-- Color ramps with hue shifting, added straight to the palette
-- Gradient tool, linear or radial, with dithered steps
-- Adjust hue, saturation and lightness; replace color; invert; desaturate
-- Outline and drop shadow effects
-- More shapes: filled, rounded rectangles, polygons
-
 ## 0.8: Documents and layers
 
 - Several sprites open at once, in tabs
@@ -65,3 +56,6 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
   `.pal`; pixel grid off by default
 - 0.6.1: transform with the mouse: drag handles on the canvas to scale and
   rotate, with the numbers in the tool options bar
+- 0.7: color wheel and recent colors; hue-shifted ramps; gradient tool;
+  rounded rectangles and polygons; the Adjust menu (hue/saturation, replace
+  color, invert, desaturate, outline, drop shadow)
