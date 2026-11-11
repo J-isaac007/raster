@@ -38,6 +38,7 @@ export function StatusBar() {
     tool: s.tool,
     selection: s.selection,
     transform: s.transform,
+    adjusting: s.adjusting,
   }));
   const inside =
     s.cursor && s.cursor.x >= 0 && s.cursor.y >= 0 && s.cursor.x < s.width && s.cursor.y < s.height;
@@ -71,7 +72,13 @@ export function StatusBar() {
         <IconButton icon={ZoomIn} label="Zoom in" shortcut="=" onClick={() => editor.zoomStep(1)} />
       </div>
       <span className="divider" />
-      <span className="status-hint">{s.transform ? TRANSFORM_HINT : HINTS[s.tool]}</span>
+      <span className="status-hint">
+        {s.adjusting
+          ? `${s.adjusting} preview · Enter to apply · Esc to cancel`
+          : s.transform
+            ? TRANSFORM_HINT
+            : HINTS[s.tool]}
+      </span>
     </footer>
   );
 }

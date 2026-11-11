@@ -367,3 +367,44 @@
   grid-template-columns: repeat(var(--cols), var(--cell));
   grid-auto-rows: var(--row);
 }
+
+/* ---- docked dialogs: live previews on the canvas (Figma: Main window — Hue/Saturation preview) */
+
+.backdrop.is-docked {
+  background: none;
+}
+
+.dialog.docked {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+}
+
+/* A swatch that opens the system color picker; the input covers it unseen. */
+.color-pick {
+  position: relative;
+  cursor: pointer;
+}
+
+.color-pick input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-pick:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.input-hex {
+  width: 112px;
+}
+
+.dialog-actions .dialog-preview {
+  margin-right: auto;
+}

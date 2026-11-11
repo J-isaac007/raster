@@ -13,12 +13,16 @@ import { TooltipLayer } from './components';
 import {
   AboutDialog,
   CanvasSizeDialog,
+  DropShadowDialog,
   ExportDialog,
   GridDialog,
+  HueSaturationDialog,
   NewSpriteDialog,
+  OutlineDialog,
   PaletteBrowserDialog,
   PaletteColorDialog,
   PreferencesDialog,
+  ReplaceColorDialog,
   ShortcutsDialog,
   SpriteSizeDialog,
   TagDialog,
@@ -164,6 +168,10 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
       {dialog === 'tag' && <TagDialog index={null} onClose={close} />}
       {dialog === 'palettes' && <PaletteBrowserDialog onClose={close} />}
       {dialog === 'savePalette' && <PaletteBrowserDialog onClose={close} save />}
+      {dialog === 'hueSaturation' && <HueSaturationDialog onClose={close} />}
+      {dialog === 'replaceColor' && <ReplaceColorDialog onClose={close} />}
+      {dialog === 'outline' && <OutlineDialog onClose={close} />}
+      {dialog === 'dropShadow' && <DropShadowDialog onClose={close} />}
       {dialog === 'paletteColor' && (
         <PaletteColorDialog
           index={editor.getState().palette.indexOf(editor.getState().primary)}

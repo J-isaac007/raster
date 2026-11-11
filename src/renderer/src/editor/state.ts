@@ -95,6 +95,8 @@ export interface EditorState {
   selection: Selection | null;
   /** The free transform in progress, or null. */
   transform: FreeTransformInfo | null;
+  /** The Adjust menu item being previewed (e.g. "Hue/Saturation"), or null. */
+  adjusting: string | null;
   /** Transform handles and fields keep the width-to-height ratio (Shift flips it while dragging). */
   transformKeep: boolean;
   /** Index of the frame being viewed and edited. */
@@ -181,6 +183,7 @@ export function initialState(sprite: Sprite): EditorState {
     cursor: null,
     selection: null,
     transform: null,
+    adjusting: null,
     transformKeep: true,
     frame: 0,
     frames: sprite.frames.map((f) => f.duration),
