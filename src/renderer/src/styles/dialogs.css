@@ -408,3 +408,65 @@
 .dialog-actions .dialog-preview {
   margin-right: auto;
 }
+
+/* ---- new ramp (RampDialog.tsx) */
+
+.ramp-base-note {
+  font: var(--type-caption);
+  color: var(--text-faint);
+}
+
+.ramp-preview {
+  display: flex;
+  margin-top: var(--space-lg);
+}
+
+.ramp-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  align-items: stretch;
+}
+
+.ramp-swatch {
+  position: relative;
+  display: block;
+  height: 36px;
+}
+
+.ramp-step:first-child .ramp-swatch {
+  overflow: hidden;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.ramp-step:last-child .ramp-swatch {
+  overflow: hidden;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.ramp-base-marker {
+  position: absolute;
+  bottom: var(--space-xs);
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2px rgb(0 0 0 / 60%);
+  transform: translateX(-50%);
+}
+
+.ramp-hex {
+  overflow: hidden;
+  font: var(--type-mono-small);
+  color: var(--text-faint);
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.ramp-hex.is-base {
+  color: var(--text);
+}

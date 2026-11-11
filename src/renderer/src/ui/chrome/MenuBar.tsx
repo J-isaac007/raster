@@ -142,6 +142,7 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
       'palette.save',
       'palette.export',
       '-',
+      'palette.ramp',
       'palette.editColor',
       'palette.indexed',
     ],

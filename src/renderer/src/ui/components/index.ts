@@ -2,6 +2,7 @@
 export { Button, type ButtonVariant } from './Button';
 export { Checkbox } from './Checkbox';
 export { Chip, Chips } from './Chip';
+export { ColorWheel } from './ColorWheel';
 export { cx } from './cx';
 export { IconButton } from './IconButton';
 export { Kbd } from './Kbd';

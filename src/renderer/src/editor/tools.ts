@@ -372,13 +372,16 @@ export const TOOLS: Tool[] = [
     id: 'picker',
     label: 'Color Picker',
     shortcut: 'I',
+    // Only the color the pick ends on goes into the recent colors.
     down(ed, e) {
-      ed.pickColor(e.x, e.y, e.button === 2 ? 'secondary' : 'primary');
+      ed.pickColor(e.x, e.y, e.button === 2 ? 'secondary' : 'primary', false);
     },
     move(ed, e) {
+      ed.pickColor(e.x, e.y, e.button === 2 ? 'secondary' : 'primary', false);
+    },
+    up(ed, e) {
       ed.pickColor(e.x, e.y, e.button === 2 ? 'secondary' : 'primary');
     },
-    up() {},
   },
 ];
 

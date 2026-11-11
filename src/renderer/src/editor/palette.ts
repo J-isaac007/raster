@@ -1,6 +1,9 @@
 import { alpha, type Color } from '@core/color';
 import { applyPatch, type PixelPatch } from '@core/history';
+import { MAX_RECENT_COLORS } from '@core/format';
 import { nearestColor, paletteRemap, paletteSnapper, recolorPixels } from '@core/palette';
+import { MAX_PALETTE_COLORS } from '@core/paletteFormats';
+import { insertRamp } from '@core/ramp';
 import { uniqueCels, type Surface } from '@core/sprite';
 import type { EditorCore } from './core';
 import type { EditorState } from './state';
@@ -39,9 +42,40 @@ export class EditorPalette {
    * same size swaps colors by index, otherwise removed colors snap to the
    * nearest remaining one.
    */
-  setPalette(palette: Color[]): void {
+  setPalette(palette: Color[], label = 'Change Palette'): void {
     const s = this.core.getState();
-    this.apply('Change Palette', { palette }, s.indexed ? paletteRemap(s.palette, palette) : null);
+    this.apply(label, { palette }, s.indexed ? paletteRemap(s.palette, palette) : null);
+  }
+
+  /**
+   * Puts a ramp (dark to light, `base` among its steps) into the palette as one
+   * undo step: in place of `base` if the palette has it, otherwise at the end,
+   * so consecutive entries walk the ramp with the Shade tool.
+   */
+  addRamp(base: Color, ramp: Color[]): void {
+    const { palette } = this.core.getState();
+    const next = insertRamp(palette, base, ramp, MAX_PALETTE_COLORS);
+    if (next.length === palette.length && next.every((c, i) => c === palette[i])) {
+      this.core.notify('The palette is full');
+      return;
+    }
+    this.setPalette(next, 'Add Ramp');
+    const added = next.length - palette.length;
+    this.core.notify(`Added ${added} ${added === 1 ? 'color' : 'colors'} to the palette`);
+  }
+
+  /**
+   * Moves `c` to the front of the recent colors (newest first, no repeats).
+   * Fully transparent colors aren't kept. Not an undo step, and doesn't make
+   * the document dirty.
+   */
+  rememberColor(c: Color): void {
+    if (alpha(c) === 0) return;
+    const { recentColors } = this.core.getState();
+    if (recentColors[0] === c) return;
+    this.core.set({
+      recentColors: [c, ...recentColors.filter((r) => r !== c)].slice(0, MAX_RECENT_COLORS),
+    });
   }
 
   /**

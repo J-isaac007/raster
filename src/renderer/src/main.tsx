@@ -32,6 +32,7 @@ if (restored) {
   editor.load(restored.sprite, {
     palette: restored.palette,
     indexed: restored.indexed,
+    recentColors: restored.recentColors,
     fileName: restored.fileName,
     dirty: restored.dirty,
   });

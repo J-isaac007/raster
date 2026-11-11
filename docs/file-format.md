@@ -1,15 +1,16 @@
 # The `.raster` file format
 
-A `.raster` file is UTF-8 JSON. Version 4 looks like this:
+A `.raster` file is UTF-8 JSON. Version 5 looks like this:
 
 ```json
 {
   "format": "raster",
-  "version": 4,
+  "version": 5,
   "width": 32,
   "height": 32,
   "palette": ["#000000", "#ff004d", "#29adff80"],
   "colorMode": "rgb",
+  "recentColors": ["#ef7d57", "#29adff"],
   "frames": [{ "duration": 100 }, { "duration": 150 }, { "duration": 100 }],
   "tags": [{ "name": "walk", "from": 0, "to": 1 }],
   "layers": [
@@ -24,19 +25,20 @@ A `.raster` file is UTF-8 JSON. Version 4 looks like this:
 }
 ```
 
-| Field       | Meaning                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| `format`    | Always `"raster"`.                                                                             |
-| `version`   | Format version. Readers must refuse versions newer than they know.                             |
-| `width`     | Sprite width in pixels, 1–2048.                                                                |
-| `height`    | Sprite height in pixels, 1–2048.                                                               |
-| `palette`   | Colors as `#rrggbb` or `#rrggbbaa`.                                                            |
-| `colorMode` | `"rgb"` or `"indexed"`. Missing means `"rgb"`.                                                 |
-| `frames`    | Animation frames in order, 1–1000. `duration` is in milliseconds.                              |
-| `tags`      | Named frame ranges (animation loops). `from` and `to` are 0-based, both included.              |
-| `layers`    | Bottom to top. At least one.                                                                   |
-| `opacity`   | Layer opacity from 0 to 1.                                                                     |
-| `cels`      | One image per frame: base64 of raw RGBA bytes, row-major from the top-left, or `{ "link": n }` |
+| Field          | Meaning                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| `format`       | Always `"raster"`.                                                                             |
+| `version`      | Format version. Readers must refuse versions newer than they know.                             |
+| `width`        | Sprite width in pixels, 1–2048.                                                                |
+| `height`       | Sprite height in pixels, 1–2048.                                                               |
+| `palette`      | Colors as `#rrggbb` or `#rrggbbaa`.                                                            |
+| `colorMode`    | `"rgb"` or `"indexed"`. Missing means `"rgb"`.                                                 |
+| `recentColors` | Recently used drawing colors, newest first, as `#rrggbb` or `#rrggbbaa`. At most 16.           |
+| `frames`       | Animation frames in order, 1–1000. `duration` is in milliseconds.                              |
+| `tags`         | Named frame ranges (animation loops). `from` and `to` are 0-based, both included.              |
+| `layers`       | Bottom to top. At least one.                                                                   |
+| `opacity`      | Layer opacity from 0 to 1.                                                                     |
+| `cels`         | One image per frame: base64 of raw RGBA bytes, row-major from the top-left, or `{ "link": n }` |
 
 Each cel decodes to exactly `width × height × 4` bytes. Colors use straight
 (not premultiplied) alpha.
@@ -54,6 +56,18 @@ numeric `from` and `to`.
 
 The reference image overlay and view settings (zoom, grid, tile mode) are not
 saved in the file.
+
+## Version 5
+
+Version 5 added `recentColors`: the drawing colors most recently set with the
+color wheel, the hex field or the system color dialog, or picked from the
+canvas, newest first, at most 16, without repeats. They belong to the
+document, so each file keeps its own. Readers skip entries that aren't valid
+colors, drop repeats and keep the first 16.
+
+## Version 4
+
+Version 4 had no `recentColors`. Readers treat it as an empty list.
 
 ## Version 3
 

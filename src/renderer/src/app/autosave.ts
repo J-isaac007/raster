@@ -63,6 +63,7 @@ export function startAutosave(editor: Editor): () => void {
       s.layers !== last.layers ||
       s.palette !== last.palette ||
       s.indexed !== last.indexed ||
+      s.recentColors !== last.recentColors ||
       s.fileName !== last.fileName ||
       s.dirty !== last.dirty;
     last = s;

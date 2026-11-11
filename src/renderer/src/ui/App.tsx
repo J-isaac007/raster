@@ -22,6 +22,7 @@ import {
   PaletteBrowserDialog,
   PaletteColorDialog,
   PreferencesDialog,
+  RampDialog,
   ReplaceColorDialog,
   ShortcutsDialog,
   SpriteSizeDialog,
@@ -168,6 +169,7 @@ export function App({ editor, welcome: startOnWelcome }: { editor: Editor; welco
       {dialog === 'tag' && <TagDialog index={null} onClose={close} />}
       {dialog === 'palettes' && <PaletteBrowserDialog onClose={close} />}
       {dialog === 'savePalette' && <PaletteBrowserDialog onClose={close} save />}
+      {dialog === 'ramp' && <RampDialog onClose={close} />}
       {dialog === 'hueSaturation' && <HueSaturationDialog onClose={close} />}
       {dialog === 'replaceColor' && <ReplaceColorDialog onClose={close} />}
       {dialog === 'outline' && <OutlineDialog onClose={close} />}

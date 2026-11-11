@@ -1,3 +1,4 @@
+import { alpha } from '@core/color';
 import { FormatError } from '@core/format';
 import type { Editor, EditorState } from '@editor/editor';
 import { readClipboardImage, writeClipboardImage } from '@platform/clipboard';
@@ -23,6 +24,8 @@ export type DialogId =
   | 'palettes'
   /** The palette browser, naming a new entry for the current palette. */
   | 'savePalette'
+  /** Palette › New Ramp: hue-shifted shades of the primary color. */
+  | 'ramp'
   | 'preferences'
   | 'commands'
   /** The Adjust menu's dialogs, which preview on the canvas. */
@@ -474,6 +477,12 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       run: () => editor.setOnionSkin(!editor.getState().onionSkin),
     },
 
+    {
+      id: 'palette.ramp',
+      label: 'New Ramp…',
+      run: () => openDialog('ramp'),
+      enabled: (s) => alpha(s.primary) > 0,
+    },
     {
       id: 'palette.editColor',
       label: 'Swap Palette Color…',
