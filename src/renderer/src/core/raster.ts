@@ -102,6 +102,130 @@ export function plotRect(
 }
 
 /**
+ * Rectangle with rounded corners: quarter circles of radius `r` joined by
+ * straight spans. `r` is clamped to half the shorter side; 0 is a plain rect.
+ * Each corner is the quarter disc dx² + dy² ≤ r², so every radius step
+ * changes the shape and corners are symmetric about the diagonal.
+ */
+export function plotRoundRect(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  r: number,
+  filled: boolean,
+  plot: Plot,
+): void {
+  const left = Math.min(x0, x1);
+  const right = Math.max(x0, x1);
+  const top = Math.min(y0, y1);
+  const bottom = Math.max(y0, y1);
+  r = Math.max(0, Math.min(Math.floor(r), (right - left) >> 1, (bottom - top) >> 1));
+  if (r === 0) {
+    plotRect(left, top, right, bottom, filled, plot);
+    return;
+  }
+  // Corner circle centers.
+  const lx = left + r;
+  const rx = right - r;
+  const ty = top + r;
+  const by = bottom - r;
+  // How far each corner row reaches out from its circle center.
+  const reach = Array.from({ length: r + 2 }, (_, dy) =>
+    dy > r ? -1 : Math.floor(Math.sqrt(r * r - dy * dy)),
+  );
+  if (filled) {
+    const span = (y: number, from: number, to: number) => {
+      for (let x = from; x <= to; x++) plot(x, y);
+    };
+    for (let dy = 0; dy <= r; dy++) {
+      span(ty - dy, lx - reach[dy], rx + reach[dy]);
+      span(by + dy, lx - reach[dy], rx + reach[dy]);
+    }
+    for (let y = ty + 1; y < by; y++) span(y, left, right);
+    return;
+  }
+  for (let dy = 0; dy <= r; dy++) {
+    // The run that joins this row to the next one out, diagonally.
+    for (let dx = Math.min(reach[dy], reach[dy + 1] + 1); dx <= reach[dy]; dx++) {
+      plot(lx - dx, ty - dy);
+      plot(rx + dx, ty - dy);
+      plot(lx - dx, by + dy);
+      plot(rx + dx, by + dy);
+    }
+  }
+  for (let x = lx + 1; x < rx; x++) {
+    plot(x, top);
+    plot(x, bottom);
+  }
+  for (let y = ty + 1; y < by; y++) {
+    plot(left, y);
+    plot(right, y);
+  }
+}
+
+/**
+ * Closed polygon through `points`: its edges, plus an even-odd scanline
+ * fill when `filled`.
+ */
+export function plotPolygon(
+  points: readonly { x: number; y: number }[],
+  filled: boolean,
+  plot: Plot,
+): void {
+  const n = points.length;
+  if (!n) return;
+  if (filled) {
+    const minY = Math.min(...points.map((p) => p.y));
+    const maxY = Math.max(...points.map((p) => p.y));
+    for (let y = minY; y <= maxY; y++) {
+      // Each edge counts on the half-open range [low, high).
+      const xs: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const a = points[i];
+        const b = points[(i + 1) % n];
+        if (a.y <= y === b.y <= y) continue;
+        xs.push(a.x + ((y - a.y) * (b.x - a.x)) / (b.y - a.y));
+      }
+      xs.sort((p, q) => p - q);
+      for (let i = 0; i + 1 < xs.length; i += 2) {
+        for (let x = Math.ceil(xs[i]); x <= Math.floor(xs[i + 1]); x++) plot(x, y);
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    let a = points[i];
+    let b = points[(i + 1) % n];
+    // Draw every edge top-down (then left to right) so edges that mirror each
+    // other rasterize as mirror images.
+    if (b.y < a.y || (b.y === a.y && b.x < a.x)) [a, b] = [b, a];
+    plotLine(a.x, a.y, b.x, b.y, plot);
+  }
+}
+
+/**
+ * Corners of a regular polygon centered on pixel (cx, cy) with its first
+ * corner at (x1, y1), rounded to pixels.
+ */
+export function regularPolygon(
+  cx: number,
+  cy: number,
+  x1: number,
+  y1: number,
+  sides: number,
+): { x: number; y: number }[] {
+  const radius = Math.hypot(x1 - cx, y1 - cy);
+  const start = Math.atan2(y1 - cy, x1 - cx);
+  // Offsets round half toward the center, with slack for float noise, so
+  // mirrored corners land on mirrored pixels.
+  const round = (v: number) => Math.sign(v) * Math.max(0, Math.round(Math.abs(v) - 1e-9));
+  return Array.from({ length: sides }, (_, i) => {
+    const a = start + (2 * Math.PI * i) / sides;
+    return { x: cx + round(radius * Math.cos(a)), y: cy + round(radius * Math.sin(a)) };
+  });
+}
+
+/**
  * Ellipse inscribed in the rectangle spanned by two corners.
  * Based on Alois Zingl's "A Rasterizing Algorithm for Drawing Curves" (2012).
  */
@@ -237,6 +361,23 @@ export function snapAngle(x0: number, y0: number, x1: number, y1: number): [numb
   if (ady > adx * 2) return [x0, y1];
   const d = Math.max(adx, ady);
   return [x0 + Math.sign(dx) * d, y0 + Math.sign(dy) * d];
+}
+
+/**
+ * Turns (x1, y1) about (x0, y0) to the nearest multiple of `step` degrees,
+ * keeping its distance. The result is not rounded to pixels.
+ */
+export function snapRotation(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  step = 15,
+): [number, number] {
+  const radius = Math.hypot(x1 - x0, y1 - y0);
+  const unit = (step * Math.PI) / 180;
+  const a = Math.round(Math.atan2(y1 - y0, x1 - x0) / unit) * unit;
+  return [x0 + radius * Math.cos(a), y0 + radius * Math.sin(a)];
 }
 
 /** Snaps (x1, y1) so the box from (x0, y0) is square. */

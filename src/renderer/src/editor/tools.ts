@@ -1,13 +1,18 @@
 import { PixelPerfect } from '@core/brush';
 import type { Color } from '@core/color';
+import { gradientHit, gradientT } from '@core/gradient';
 import { combineSelections, polygonSelection, type Point, type SelectMode } from '@core/mask';
 import {
   plotEllipse,
   plotLine,
+  plotPolygon,
   plotRect,
+  plotRoundRect,
   rectFromCorners,
+  regularPolygon,
   selectionContains,
   snapAngle,
+  snapRotation,
   snapSquare,
   type Selection,
 } from '@core/raster';
@@ -135,6 +140,72 @@ const outlineOrFill =
   (ed, x0, y0, x1, y1, color) => {
     plot(x0, y0, x1, y1, ed.getState().shapeFilled, (x, y) => ed.dab(x, y, color));
   };
+
+/** Rectangle with the current corner radius. */
+const drawRect: ShapeDraw = (ed, ...args) => {
+  const r = ed.getState().shapeRadius;
+  outlineOrFill((x0, y0, x1, y1, filled, plot) => plotRoundRect(x0, y0, x1, y1, r, filled, plot))(
+    ed,
+    ...args,
+  );
+};
+
+/** Regular polygon from its center (x0, y0) to a corner (x1, y1). */
+const drawPolygon: ShapeDraw = (ed, ...args) => {
+  const sides = ed.getState().polygonSides;
+  outlineOrFill((x0, y0, x1, y1, filled, plot) =>
+    plotPolygon(regularPolygon(x0, y0, x1, y1, sides), filled, plot),
+  )(ed, ...args);
+};
+
+/**
+ * Gradient: drag from the start point to the end point. Fills the selection,
+ * or the whole layer, from the primary color to the secondary through ordered
+ * dither steps. Right drag swaps the colors; Shift snaps the angle.
+ */
+function gradientTool(): Tool {
+  let start: { x: number; y: number } | null = null;
+  let from: Color = 0;
+  let to: Color = 0;
+  const render = (ed: Editor, e: ToolEvent) => {
+    if (!start) return;
+    const [x1, y1] = e.shift ? snapAngle(start.x, start.y, e.x, e.y) : [e.x, e.y];
+    ed.resetStroke();
+    // A click without a drag leaves the layer alone.
+    if (x1 !== start.x || y1 !== start.y) {
+      const { gradientKind, selection } = ed.getState();
+      const area = selection ?? { x: 0, y: 0, width: ed.sprite.width, height: ed.sprite.height };
+      for (let y = area.y; y < area.y + area.height; y++) {
+        for (let x = area.x; x < area.x + area.width; x++) {
+          const t = gradientT(gradientKind, start.x, start.y, x1, y1, x, y);
+          ed.paint(x, y, gradientHit(x, y, t) ? to : from);
+        }
+      }
+    }
+    ed.touch();
+  };
+  return {
+    id: 'gradient',
+    label: 'Gradient',
+    shortcut: 'R',
+    down(ed, e) {
+      if (!ed.beginStroke()) return;
+      start = { x: e.x, y: e.y };
+      const s = ed.getState();
+      [from, to] = e.button === 2 ? [s.secondary, s.primary] : [s.primary, s.secondary];
+      render(ed, e);
+    },
+    move(ed, e) {
+      if (ed.stroking) render(ed, e);
+    },
+    up(ed, e) {
+      if (!ed.stroking) return;
+      render(ed, e);
+      start = null;
+      ed.endStroke('Gradient');
+    },
+  };
+}
 
 /**
  * Rectangle selection. Dragging inside the selection moves its pixels;
@@ -293,8 +364,10 @@ export const TOOLS: Tool[] = [
   shape('line', 'Line', 'L', snapAngle, (ed, x0, y0, x1, y1, color) =>
     plotLine(x0, y0, x1, y1, (x, y) => ed.dab(x, y, color)),
   ),
-  shape('rect', 'Rectangle', 'U', snapSquare, outlineOrFill(plotRect)),
+  shape('rect', 'Rectangle', 'U', snapSquare, drawRect),
   shape('ellipse', 'Ellipse', 'O', snapSquare, outlineOrFill(plotEllipse)),
+  shape('polygon', 'Polygon', 'P', snapRotation, drawPolygon),
+  gradientTool(),
   {
     id: 'picker',
     label: 'Color Picker',

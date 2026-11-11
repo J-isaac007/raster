@@ -125,6 +125,21 @@ export class EditorStrokes {
     if (s) this.forDab(x, y, 1, (i) => (s.layer.pixels[i] = s.base[i]), false);
   }
 
+  /**
+   * Paints the single pixel at (x, y): tile wrap, selection clip and palette
+   * snap, but no brush, custom brush or dither (the gradient tool). No
+   * symmetry either: it paints every pixel of its area anyway, so mirrored
+   * writes would overwrite pixels it already set.
+   */
+  paint(x: number, y: number, color: Color): void {
+    const s = this.stroke;
+    if (!s) return;
+    [x, y] = this.view.wrap(x, y);
+    if (!inBounds(s.layer, x, y) || (s.clip && !selectionContains(s.clip, x, y))) return;
+    const i = y * s.layer.width + x;
+    s.layer.pixels[i] = s.snap(blend(s.base[i], color));
+  }
+
   /** Lightens (`dir` 1) or darkens (-1) pixels under the brush, once per stroke. */
   shadeDab(x: number, y: number, dir: 1 | -1): void {
     const s = this.stroke;

@@ -1,14 +1,21 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { DITHER_LEVELS, type CustomBrush } from '@core/brush';
-import { MAX_BRUSH, type ToolId } from '@editor/editor';
+import {
+  MAX_BRUSH,
+  MAX_POLYGON_SIDES,
+  MAX_SHAPE_RADIUS,
+  MIN_POLYGON_SIDES,
+  type ToolId,
+} from '@editor/editor';
 import { TOOL_BY_ID } from '@editor/tools';
 import { Checkbox, Chip, IconButton, Select, Slider } from '../components';
 import { useEditor, useEditorState } from '../editorContext';
 import { TransformOptions } from './TransformOptions';
 
-const BRUSH_TOOLS: ToolId[] = ['pencil', 'eraser', 'shade', 'line', 'rect', 'ellipse'];
-const DITHER_TOOLS: ToolId[] = ['pencil', 'line', 'rect', 'ellipse', 'fill'];
+const BRUSH_TOOLS: ToolId[] = ['pencil', 'eraser', 'shade', 'line', 'rect', 'ellipse', 'polygon'];
+const DITHER_TOOLS: ToolId[] = ['pencil', 'line', 'rect', 'ellipse', 'polygon', 'fill'];
+const SHAPE_TOOLS: ToolId[] = ['rect', 'ellipse', 'polygon'];
 const DITHER_OPTIONS: [string, number][] = [
   ['Solid', DITHER_LEVELS],
   ['75%', 12],
@@ -50,6 +57,9 @@ export function ToolOptions() {
     tool: s.tool,
     brushSize: s.brushSize,
     shapeFilled: s.shapeFilled,
+    shapeRadius: s.shapeRadius,
+    polygonSides: s.polygonSides,
+    gradientKind: s.gradientKind,
     fillContiguous: s.fillContiguous,
     wandContiguous: s.wandContiguous,
     mirrorX: s.mirrorX,
@@ -61,7 +71,7 @@ export function ToolOptions() {
     transform: s.transform,
   }));
   const usesBrush = BRUSH_TOOLS.includes(s.tool);
-  const isShape = s.tool === 'rect' || s.tool === 'ellipse';
+  const isShape = SHAPE_TOOLS.includes(s.tool);
 
   if (s.transform) {
     return (
@@ -133,6 +143,50 @@ export function ToolOptions() {
           checked={s.shapeFilled}
           onChange={(shapeFilled) => editor.setOption({ shapeFilled })}
         />
+      )}
+
+      {s.tool === 'rect' && (
+        <Slider
+          className="shape-radius"
+          label="Radius"
+          title="Corner radius (0 for square corners)"
+          min={0}
+          max={MAX_SHAPE_RADIUS}
+          value={s.shapeRadius}
+          display={`${s.shapeRadius} px`}
+          onChange={(shapeRadius) => editor.setOption({ shapeRadius })}
+        />
+      )}
+
+      {s.tool === 'polygon' && (
+        <Slider
+          className="polygon-sides"
+          label="Sides"
+          title="Number of sides"
+          min={MIN_POLYGON_SIDES}
+          max={MAX_POLYGON_SIDES}
+          value={s.polygonSides}
+          display={`${s.polygonSides}`}
+          onChange={(polygonSides) => editor.setOption({ polygonSides })}
+        />
+      )}
+
+      {s.tool === 'gradient' && (
+        <div className="option-field" role="group" aria-label="Gradient type">
+          <span className="option-label">Type</span>
+          <Chip
+            pressed={s.gradientKind === 'linear'}
+            onClick={() => editor.setOption({ gradientKind: 'linear' })}
+          >
+            Linear
+          </Chip>
+          <Chip
+            pressed={s.gradientKind === 'radial'}
+            onClick={() => editor.setOption({ gradientKind: 'radial' })}
+          >
+            Radial
+          </Chip>
+        </div>
       )}
 
       {s.tool === 'fill' && (

@@ -42,6 +42,7 @@ export type {
   ToolId,
 } from './state';
 export { MAX_BRUSH, ZOOM_STEPS } from './state';
+export { MAX_POLYGON_SIDES, MAX_SHAPE_RADIUS, MIN_POLYGON_SIDES } from './state';
 export { MAX_TRANSFORM_SCALE, MIN_TRANSFORM_SCALE } from './freeTransform';
 export type { FreeTransformParams } from './freeTransform';
 
@@ -232,6 +233,7 @@ export class Editor {
   dab = (x: number, y: number, color: Color | null) => this.strokes.dab(x, y, color);
   undab = (x: number, y: number) => this.strokes.undab(x, y);
   shadeDab = (x: number, y: number, dir: 1 | -1) => this.strokes.shadeDab(x, y, dir);
+  paint = (x: number, y: number, color: Color) => this.strokes.paint(x, y, color);
   fill = (x: number, y: number, color: Color | null) => this.strokes.fill(x, y, color);
   touch = () => this.strokes.touch();
   endStroke = (label: string) => this.strokes.endStroke(label);
@@ -311,7 +313,7 @@ export class Editor {
       return;
     }
     this.selection.deselect();
-    const paints = ['pencil', 'eraser', 'shade', 'line', 'rect', 'ellipse'];
+    const paints = ['pencil', 'eraser', 'shade', 'line', 'rect', 'ellipse', 'polygon'];
     this.set({
       customBrush: brush,
       tool: paints.includes(this.state.tool) ? this.state.tool : 'pencil',

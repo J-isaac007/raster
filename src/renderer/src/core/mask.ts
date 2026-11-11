@@ -1,5 +1,11 @@
 import { TRANSPARENT } from './color';
-import { floodRegion, intersectRect, plotLine, selectionContains, type Selection } from './raster';
+import {
+  floodRegion,
+  intersectRect,
+  plotPolygon,
+  selectionContains,
+  type Selection,
+} from './raster';
 import type { Surface } from './sprite';
 
 /** How a new selection combines with the current one. */
@@ -116,28 +122,7 @@ export function polygonSelection(points: Point[], width: number, height: number)
   const put = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < width && y < height) mask[y * width + x] = 1;
   };
-  const n = points.length;
-  const minY = Math.max(0, Math.min(...points.map((p) => p.y)));
-  const maxY = Math.min(height - 1, Math.max(...points.map((p) => p.y)));
-  for (let y = minY; y <= maxY; y++) {
-    // Even-odd scanline fill; each edge counts on the half-open range [low, high).
-    const xs: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const a = points[i];
-      const b = points[(i + 1) % n];
-      if (a.y <= y === b.y <= y) continue;
-      xs.push(a.x + ((y - a.y) * (b.x - a.x)) / (b.y - a.y));
-    }
-    xs.sort((p, q) => p - q);
-    for (let i = 0; i + 1 < xs.length; i += 2) {
-      for (let x = Math.ceil(xs[i]); x <= Math.floor(xs[i + 1]); x++) put(x, y);
-    }
-  }
-  for (let i = 0; i < n; i++) {
-    const a = points[i];
-    const b = points[(i + 1) % n];
-    plotLine(a.x, a.y, b.x, b.y, put);
-  }
+  plotPolygon(points, true, put);
   return selectionFromMask(mask, width, height);
 }
 

@@ -16,6 +16,10 @@ const HINTS: Record<ToolId, string> = {
   line: 'Drag to draw a line · Shift snaps the angle · Right click uses the secondary color',
   rect: 'Drag to draw · Shift makes a square · Right click uses the secondary color',
   ellipse: 'Drag to draw · Shift makes a circle · Right click uses the secondary color',
+  polygon:
+    'Drag from the center to a corner · Shift snaps the rotation to 15° · Right click uses the secondary color',
+  gradient:
+    'Drag to draw a gradient · Shift snaps the angle · Right drag swaps the colors · Fills the selection, or the whole layer',
   picker: 'Left click picks the primary color, right click the secondary',
 };
 

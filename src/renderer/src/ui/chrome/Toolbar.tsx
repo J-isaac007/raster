@@ -1,10 +1,12 @@
 import {
+  Blend,
   Circle,
   Contrast,
   Eraser,
   LassoSelect,
   PaintBucket,
   Pencil,
+  Pentagon,
   Pipette,
   Slash,
   Square,
@@ -29,6 +31,8 @@ const TOOL_ICONS: Record<ToolId, LucideIcon> = {
   line: Slash,
   rect: Square,
   ellipse: Circle,
+  polygon: Pentagon,
+  gradient: Blend,
   picker: Pipette,
 };
 
@@ -36,7 +40,7 @@ const TOOL_ICONS: Record<ToolId, LucideIcon> = {
 const GROUPS: ToolId[][] = [
   ['select', 'lasso', 'wand'],
   ['pencil', 'eraser', 'shade', 'fill'],
-  ['line', 'rect', 'ellipse'],
+  ['line', 'rect', 'ellipse', 'polygon', 'gradient'],
   ['picker'],
 ];
 

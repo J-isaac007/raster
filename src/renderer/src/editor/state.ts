@@ -1,5 +1,6 @@
 import { DITHER_LEVELS, type BrushMode, type CustomBrush } from '@core/brush';
 import { rgba, TRANSPARENT, type Color } from '@core/color';
+import type { GradientKind } from '@core/gradient';
 import { DEFAULT_PALETTE } from '@core/palette';
 import type { Selection } from '@core/raster';
 import { DEFAULT_FRAME_MS, type Layer, type Sprite } from '@core/sprite';
@@ -17,6 +18,8 @@ export type ToolId =
   | 'line'
   | 'rect'
   | 'ellipse'
+  | 'polygon'
+  | 'gradient'
   | 'picker';
 
 /** Which axes the canvas repeats on, for drawing seamless tiles. */
@@ -70,6 +73,11 @@ export interface EditorState {
   /** How a custom brush paints: its own colors, or the current color in its shape. */
   brushMode: BrushMode;
   shapeFilled: boolean;
+  /** Corner radius of the rectangle tool, 0..MAX_SHAPE_RADIUS. */
+  shapeRadius: number;
+  /** Sides of the polygon tool, MIN_POLYGON_SIDES..MAX_POLYGON_SIDES. */
+  polygonSides: number;
+  gradientKind: GradientKind;
   fillContiguous: boolean;
   /** The magic wand selects only pixels connected to the one clicked. */
   wandContiguous: boolean;
@@ -120,6 +128,9 @@ export interface EditorState {
 export type EditorOptions = Pick<
   EditorState,
   | 'shapeFilled'
+  | 'shapeRadius'
+  | 'polygonSides'
+  | 'gradientKind'
   | 'fillContiguous'
   | 'wandContiguous'
   | 'mirrorX'
@@ -135,6 +146,9 @@ export type EditorOptions = Pick<
 
 export const ZOOM_STEPS = [0.25, 0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64];
 export const MAX_BRUSH = 32;
+export const MAX_SHAPE_RADIUS = 16;
+export const MIN_POLYGON_SIDES = 3;
+export const MAX_POLYGON_SIDES = 12;
 
 export const clampDuration = (ms: number) =>
   Math.min(60000, Math.max(10, Math.round(ms) || DEFAULT_FRAME_MS));
@@ -163,6 +177,9 @@ export function initialState(sprite: Sprite): EditorState {
     customBrush: null,
     brushMode: 'image',
     shapeFilled: false,
+    shapeRadius: 0,
+    polygonSides: 5,
+    gradientKind: 'linear',
     fillContiguous: true,
     wandContiguous: true,
     mirrorX: false,

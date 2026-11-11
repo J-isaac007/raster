@@ -86,13 +86,15 @@ The pure engine and the store, in more detail:
 core/     Pure TypeScript. No DOM, no React. Fully unit tested.
     color.ts     Packed RGBA colors, hex parsing, alpha blending
     sprite.ts    Sprite and layer model, compositing, flip, resize
-    raster.ts    Drawing primitives: line, rect, ellipse, brush, flood fill
+    raster.ts    Drawing primitives: line, rect, rounded rect, ellipse, polygon,
+                 brush, flood fill
     mask.ts      Selection masks: lasso, magic wand, add/subtract, outlines
     tags.ts      Animation tags (named frame ranges) and tag-aware playback
     history.ts   Undo/redo stack and sparse pixel patches
     palette.ts   Palette presets, .hex/.gpl parsing, nearest color, remapping
     format.ts    The .raster project file format
     brush.ts     Dither patterns, pixel-perfect filter, shading
+    gradient.ts  Gradient tool math: linear/radial position, dithered steps
     gif.ts       GIF encoder (gifDecode.ts decodes, quantize.ts reduces colors)
     sheet.ts     Sprite sheet layout and JSON metadata
     transform.ts Quarter turns, flips, nearest scaling, RotSprite, trim bounds
