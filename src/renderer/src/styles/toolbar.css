@@ -4,6 +4,9 @@
   align-items: center;
   gap: var(--space-2xs);
   width: 48px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
   padding: var(--space-md) 0;
   background: var(--panel);
   border-right: 1px solid var(--border);

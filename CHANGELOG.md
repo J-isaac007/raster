@@ -6,6 +6,59 @@ All notable changes to Raster are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-11
+
+### Added
+
+- Tabs: open several sprites at once. New sprites and opened files each get
+  their own tab (an untouched untitled tab is reused), and opening a file
+  that's already open switches to it. Each tab keeps its own undo history and
+  file. `Ctrl+Tab` / `Ctrl+Shift+Tab` switch tabs; `Ctrl+W` (or a
+  middle-click) closes one, asking first if it has unsaved changes. The title
+  bar follows the active tab, and quitting warns if any tab is unsaved.
+  Autosave keeps every tab and reopens them all.
+- Layer groups: Layer › Group Layers (`Ctrl+G`) and Ungroup
+  (`Ctrl+Shift+G`). Groups nest, fold, hide everything in them, and move
+  up and down as one. A group with the Normal blend mode passes through, so
+  blend modes inside it still reach the layers below; give it another mode to
+  composite it on its own first.
+- Blend modes for layers and groups: Normal, Multiply, Screen, Overlay, Add,
+  Darken, Lighten and Difference. They also apply when merging down.
+- Reference layers: shown while you draw, left out of every export (PNG,
+  GIF and sprite sheets). Tick Reference layer on the Layer panel.
+- Per-cel opacity: Frame › Cel Properties… (or double-click a cel) sets the
+  opacity of the picked cels, on top of the layer's opacity. Linked cels
+  share it.
+- The timeline is now a grid of layers × frames. Layers (with their groups)
+  are listed on the left, frames across the top, and each cel shows as a dot:
+  filled when it has pixels, a ring when empty, joined by a bar when linked.
+  - Click a cel to pick it; Shift-click or drag to pick a block of cels. Drag
+    picked cels to move them to other frames or layers; hold `Ctrl` to copy.
+  - Click a frame number to pick it, drag along the numbers to scrub, and
+    drag picked frames to move them; hold `Ctrl` to copy. A blue bar shows
+    where they'll land, and `Escape` cancels.
+  - Duplicate Frame and Delete Frame act on all picked frames.
+  - Every move or copy is one undo step. `Alt+←` / `Alt+→` still move the
+    current frame.
+- Onion skin options (the arrow next to the onion skin button): how many
+  frames to show before and after (up to 4 each, fading with distance), their
+  opacity, and whether to tint them, with your own before and after colors.
+  They're saved with your preferences.
+
+### Changed
+
+- The Layers panel became the Layer panel: it shows the picked layer's or
+  group's opacity, blend mode and reference setting. The layer list itself is
+  the timeline's left column.
+- Frame thumbnails in the timeline gave way to the cel grid.
+- `.raster` files are now version 6, which adds groups, blend modes,
+  reference layers and cel opacity. Older files open as before.
+
+### Fixed
+
+- In a short window the canvas no longer overlaps the timeline; the toolbar
+  scrolls instead.
+
 ## [0.7.0] - 2026-11-11
 
 ### Added

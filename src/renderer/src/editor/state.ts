@@ -1,9 +1,9 @@
 import { DITHER_LEVELS, type BrushMode, type CustomBrush } from '@core/brush';
-import { rgba, TRANSPARENT, type Color } from '@core/color';
+import { rgba, TRANSPARENT, type BlendMode, type Color } from '@core/color';
 import type { GradientKind } from '@core/gradient';
 import { DEFAULT_PALETTE } from '@core/palette';
 import type { Selection } from '@core/raster';
-import { DEFAULT_FRAME_MS, type Layer, type Sprite } from '@core/sprite';
+import { DEFAULT_FRAME_MS, type Group, type Layer, type Sprite } from '@core/sprite';
 import type { Tag } from '@core/tags';
 import type { TransformBox } from '@core/transformBox';
 
@@ -39,6 +39,26 @@ export interface LayerInfo {
   visible: boolean;
   locked: boolean;
   opacity: number;
+  blendMode: BlendMode;
+  /** Shown while drawing, left out of exports. */
+  reference: boolean;
+  groupId: string | null;
+}
+
+export interface TimelineSelection {
+  layerIds: string[];
+  /** First and last frame, inclusive. */
+  frames: [number, number];
+}
+
+export interface GroupInfo {
+  id: string;
+  name: string;
+  parentId: string | null;
+  visible: boolean;
+  opacity: number;
+  blendMode: BlendMode;
+  collapsed: boolean;
 }
 
 /** A free transform in progress (Edit › Transform), as the canvas and chrome show it. */
@@ -60,7 +80,16 @@ export interface EditorState {
   width: number;
   height: number;
   layers: LayerInfo[];
+  groups: GroupInfo[];
+  /** The layer drawing goes to. */
   activeLayerId: string;
+  /** A group picked in the layer list (its properties show); null when a layer is. */
+  activeGroupId: string | null;
+  /**
+   * Cels or frames picked in the timeline. `layerIds` lists layers top first;
+   * empty means whole frames. Not undoable; null when nothing is picked.
+   */
+  timelineSelection: TimelineSelection | null;
   tool: ToolId;
   primary: Color;
   secondary: Color;
@@ -167,7 +196,12 @@ export const layerInfo = (l: Layer): LayerInfo => ({
   visible: l.visible,
   locked: l.locked,
   opacity: l.opacity,
+  blendMode: l.blendMode,
+  reference: l.reference,
+  groupId: l.groupId,
 });
+
+export const groupInfo = (g: Group): GroupInfo => ({ ...g });
 
 /** The state of a freshly opened editor showing `sprite`. */
 export function initialState(sprite: Sprite): EditorState {
@@ -175,7 +209,10 @@ export function initialState(sprite: Sprite): EditorState {
     width: sprite.width,
     height: sprite.height,
     layers: sprite.layers.map(layerInfo),
+    groups: sprite.groups.map(groupInfo),
     activeLayerId: sprite.layers[sprite.layers.length - 1].id,
+    activeGroupId: null,
+    timelineSelection: null,
     tool: 'pencil',
     primary: rgba(0, 0, 0),
     secondary: TRANSPARENT,

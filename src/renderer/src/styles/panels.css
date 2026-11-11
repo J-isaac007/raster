@@ -179,7 +179,8 @@
 
 .layers {
   flex: 1;
-  min-height: 60px;
+  /* At least three rows, even when the sidebar is short. */
+  min-height: 124px;
   margin: 0 calc(-1 * var(--space-xs));
   overflow-y: auto;
 }
@@ -189,7 +190,7 @@
   align-items: center;
   gap: var(--space-md);
   height: 40px;
-  padding: 0 var(--space-xs);
+  padding: 0 var(--space-xs) 0 calc(var(--space-xs) + var(--indent, 0px));
   border-radius: var(--radius-sm);
   color: var(--text-dim);
 }
@@ -240,6 +241,92 @@
 
 .layer-lock:not(.is-locked) {
   opacity: 0.5;
+}
+
+/* Groups, blend modes and reference layers (Figma: Layers panel — groups, blend, reference) */
+.layer-group .layer-name {
+  font-weight: 600;
+}
+
+.layer-group-icons {
+  display: flex;
+  gap: 2px;
+  color: var(--text-dim);
+}
+
+.layer-fold {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+}
+
+.layer-fold:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.layer-badge {
+  flex: none;
+  padding: 1px var(--space-xs);
+  border-radius: 3px;
+  background: var(--panel-raised);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 14px;
+}
+
+.layer-badge.is-blend {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.layer.is-reference .layer-thumb {
+  opacity: 0.7;
+}
+
+.layer-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text-dim);
+}
+
+.layer-target-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font: var(--type-body-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.layer-prop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.layer-prop-row .form-label {
+  flex: none;
+  width: 41px;
+}
+
+.layer-prop-row .select {
+  flex: 1;
 }
 
 .palette-browse {

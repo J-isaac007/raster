@@ -7,6 +7,7 @@ import { refreshRecent } from '@platform/recent';
 import { cx, Kbd } from '../components';
 import { useEditor } from '../editorContext';
 import { useRecentFiles } from '../useSettings';
+import { useDocuments } from '../documentsContext';
 
 interface Item {
   id: string;
@@ -56,6 +57,7 @@ function rememberCommand(id: string): void {
 /** Find and run any command, or open a recent file, by typing (Figma: Command palette). */
 export function CommandPalette({ actions, onClose }: { actions: Action[]; onClose(): void }) {
   const editor = useEditor();
+  const docs = useDocuments();
   const recentFiles = useRecentFiles();
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -82,10 +84,10 @@ export function CommandPalette({ actions, onClose }: { actions: Action[]; onClos
       label: `Open ${f.name}`,
       group: 'Recent files',
       enabled: true,
-      run: () => void openRecent(editor, f.path, f.name),
+      run: () => void openRecent(docs, f.path, f.name),
     }));
     return [...commands, ...files];
-  }, [actions, editor, recentFiles]);
+  }, [actions, docs, editor, recentFiles]);
 
   // With no query: recently run commands, then everything in menu order.
   const sections = useMemo<{ title?: string; items: Item[] }[]>(() => {

@@ -75,7 +75,7 @@ export function baseName(fileName: string): string {
 
 // ---- project files ----------------------------------------------------------
 
-interface SaveFileHandle {
+export interface SaveFileHandle {
   name: string;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
 }
@@ -84,14 +84,18 @@ interface FilePickerWindow {
   showSaveFilePicker?: (options: unknown) => Promise<SaveFileHandle>;
 }
 
-/** Remembered so Ctrl+S overwrites the file that's open. */
-let currentPath: string | null = null;
-let currentHandle: SaveFileHandle | null = null;
-
-export function forgetFileHandle(): void {
-  currentPath = null;
-  currentHandle = null;
+/**
+ * Where a document was opened from or saved to, so Ctrl+S overwrites it.
+ * Each open document (tab) has its own.
+ */
+export interface FileRef {
+  /** Desktop: the file's path. */
+  path: string | null;
+  /** Browser (development): a File System Access handle. */
+  handle: SaveFileHandle | null;
 }
+
+export const newFileRef = (path: string | null = null): FileRef => ({ path, handle: null });
 
 /**
  * Saves a project. Ctrl+S overwrites the open file; Save As (or a new
@@ -100,6 +104,7 @@ export function forgetFileHandle(): void {
 export async function saveProject(
   project: Project,
   fileName: string,
+  ref: FileRef,
   saveAs = false,
 ): Promise<string | null> {
   const json = serializeProject(project);
@@ -107,13 +112,13 @@ export async function saveProject(
 
   if (desktop) {
     const saved = await desktop.saveFile({
-      path: saveAs ? null : currentPath,
+      path: saveAs ? null : ref.path,
       defaultName: name,
       filters: [{ name: 'Raster project', extensions: [FILE_EXTENSION.slice(1)] }],
       data: new TextEncoder().encode(json),
     });
     if (!saved) return null;
-    currentPath = saved;
+    ref.path = saved;
     return saved.split(/[\\/]/).pop() ?? name;
   }
 
@@ -122,18 +127,18 @@ export async function saveProject(
 
   if (picker) {
     try {
-      if (saveAs || !currentHandle) {
-        currentHandle = await picker({
+      if (saveAs || !ref.handle) {
+        ref.handle = await picker({
           suggestedName: name,
           types: [
             { description: 'Raster project', accept: { 'application/json': [FILE_EXTENSION] } },
           ],
         });
       }
-      const writable = await currentHandle.createWritable();
+      const writable = await ref.handle.createWritable();
       await writable.write(blob);
       await writable.close();
-      return currentHandle.name;
+      return ref.handle.name;
     } catch (e) {
       if ((e as DOMException).name === 'AbortError') return null;
       throw e;
@@ -144,9 +149,10 @@ export async function saveProject(
   return name;
 }
 
-export async function openProjectFile(file: PickedFile): Promise<Project> {
-  forgetFileHandle();
+/** Reads a project file; `ref` remembers where it came from (desktop). */
+export async function openProjectFile(
+  file: PickedFile,
+): Promise<{ project: Project; ref: FileRef }> {
   const project = parseProject(await file.text());
-  currentPath = file.path ?? null;
-  return project;
+  return { project, ref: newFileRef(file.path ?? null) };
 }

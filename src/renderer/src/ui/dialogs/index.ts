@@ -1,5 +1,6 @@
 export { AboutDialog } from './AboutDialog';
 export { CanvasSizeDialog } from './CanvasSizeDialog';
+export { CelPropertiesDialog } from './CelPropertiesDialog';
 export { DropShadowDialog } from './DropShadowDialog';
 export { ExportDialog } from './ExportDialog';
 export { GridDialog } from './GridDialog';

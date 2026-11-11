@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { loadAutosave } from '@app/autosave';
+import { loadAutosave, startAutosave } from '@app/autosave';
+import { Documents } from '@app/documents';
 import { acceptDroppedFiles, openAnyFile } from '@app/openFile';
 import { startPreferences } from '@app/preferences';
 import { startUpdates } from '@app/updates';
-import { Editor } from '@editor/editor';
 import { desktop, toFile } from '@platform/desktop';
 import { refreshSavedPalettes } from '@platform/palettes';
 import { refreshRecent } from '@platform/recent';
@@ -22,45 +22,61 @@ applyAccent(getSettings().accent);
 void refreshRecent();
 void refreshSavedPalettes();
 
-const editor = new Editor();
-startPreferences(editor);
+// Every tab's editor follows the preferences (pixel grid, …).
+const docs = new Documents((editor) => startPreferences(editor));
 
-// Reopen the last sprite when asked to, and always when it has unsaved work.
-const saved = getSettings().autosave ? loadAutosave() : null;
-const restored = saved && (getSettings().reopenLast || saved.dirty) ? saved : null;
-if (restored) {
-  editor.load(restored.sprite, {
-    palette: restored.palette,
-    indexed: restored.indexed,
-    recentColors: restored.recentColors,
-    fileName: restored.fileName,
-    dirty: restored.dirty,
-  });
+// Reopen the last session's tabs when asked to, and always those with unsaved work.
+const saved = getSettings().autosave ? loadAutosave() : { docs: [], active: null };
+const restored = saved.docs.filter((d) => getSettings().reopenLast || d.dirty);
+if (restored.length) {
+  const blank = docs.active().id;
+  for (const r of restored) {
+    docs.create(r.id).editor.load(r.sprite, {
+      palette: r.palette,
+      indexed: r.indexed,
+      recentColors: r.recentColors,
+      fileName: r.fileName,
+      dirty: r.dirty,
+    });
+  }
+  docs.close(blank, () => true);
+  docs.activate(restored.some((r) => r.id === saved.active) ? saved.active! : restored[0].id);
 }
+startAutosave(docs);
 
-acceptDroppedFiles(editor);
+acceptDroppedFiles(docs);
 
-// Keep the window title and the quit warning in step with the document.
+// Keep the window title on the active tab, and the quit warning on for any
+// tab with unsaved changes.
 let shown = '';
+let watching = new Map<string, () => void>();
 const syncTitle = () => {
-  const { fileName, dirty } = editor.getState();
+  const { fileName, dirty } = docs.active().editor.getState();
   const title = `${fileName}${dirty ? ' •' : ''} — Raster`;
-  if (title === shown) return;
-  shown = title;
-  document.title = title;
-  desktop?.setDirty(dirty);
+  if (title !== shown) {
+    shown = title;
+    document.title = title;
+  }
+  desktop?.setDirty(docs.anyDirty());
 };
-editor.subscribe(syncTitle);
-syncTitle();
+const watchTabs = () => {
+  const next = new Map<string, () => void>();
+  for (const d of docs.list()) next.set(d.id, watching.get(d.id) ?? d.editor.subscribe(syncTitle));
+  for (const [id, stop] of watching) if (!next.has(id)) stop();
+  watching = next;
+  syncTitle();
+};
+docs.subscribe(watchTabs);
+watchTabs();
 
 // Files opened from Explorer (double-click, "Open with") or a second launch.
-desktop?.onOpenFile((file) => openAnyFile(editor, toFile(file)));
+desktop?.onOpenFile((file) => openAnyFile(docs, toFile(file)));
 
-// Background update checks (installed app only).
-startUpdates(editor);
+// Background update checks (installed app only); messages go to the active tab.
+startUpdates((message) => docs.active().editor.notify(message));
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App editor={editor} welcome={!restored} />
+    <App docs={docs} welcome={restored.length === 0} />
   </StrictMode>,
 );

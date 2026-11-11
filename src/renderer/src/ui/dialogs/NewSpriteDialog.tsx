@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { newSprite } from '@app/openFile';
 import { Button, Chip, Chips } from '../components';
-import { useEditor } from '../editorContext';
 import { Dialog, DialogActions } from './Dialog';
 import { SizeFields } from './SizeFields';
+import { useDocuments } from '../documentsContext';
 
 const SIZE_PRESETS = [16, 32, 48, 64, 128, 256];
 
 export function NewSpriteDialog({ onClose }: { onClose: () => void }) {
-  const editor = useEditor();
+  const docs = useDocuments();
   const [width, setWidth] = useState(32);
   const [height, setHeight] = useState(32);
 
   const create = () => {
-    if (newSprite(editor, width, height)) onClose();
+    if (newSprite(docs, width, height)) onClose();
   };
 
   return (

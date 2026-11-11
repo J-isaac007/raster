@@ -174,3 +174,76 @@
 .menu-recent-index {
   color: var(--text-faint);
 }
+
+/* ---- tabs: one per open sprite (Figma: Tab bar — several sprites) */
+
+.tab-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 34px;
+  padding: 0 var(--space-md);
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 220px;
+  height: 30px;
+  padding: 0 var(--space-xs) 0 var(--space-lg);
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--text-dim);
+  cursor: default;
+  user-select: none;
+}
+
+.tab:hover {
+  background: var(--hover);
+}
+
+.tab.is-active {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dirty {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.tab.is-active .tab-dirty {
+  background: var(--accent);
+}
+
+.tab-close {
+  opacity: 0.5;
+}
+
+.tab:hover .tab-close,
+.tab.is-active .tab-close {
+  opacity: 0.9;
+}
+
+.tab-new {
+  align-self: center;
+}

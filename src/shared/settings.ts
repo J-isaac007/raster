@@ -25,7 +25,18 @@ export interface Settings {
   reopenLast: boolean;
   /** Check GitHub for a newer version when Raster starts. */
   checkUpdates: boolean;
+  /** Onion skin: how many frames to show before and after the current one (0–4). */
+  onionBefore: number;
+  onionAfter: number;
+  /** Onion skin opacity of the nearest frames, 0.1–0.9; farther frames fade. */
+  onionOpacity: number;
+  /** Tint onion frames (before and after colors) instead of showing their own colors. */
+  onionTint: boolean;
+  onionBeforeColor: string;
+  onionAfterColor: string;
 }
+
+export const MAX_ONION_FRAMES = 4;
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
   accent: 'blue',
@@ -35,6 +46,12 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   autosave: true,
   reopenLast: true,
   checkUpdates: true,
+  onionBefore: 1,
+  onionAfter: 1,
+  onionOpacity: 0.35,
+  onionTint: true,
+  onionBeforeColor: '#ff4d6a',
+  onionAfterColor: '#4d8cff',
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -42,6 +59,11 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const pick = <T>(value: unknown, valid: (v: unknown) => boolean, fallback: T): T =>
   valid(value) ? (value as T) : fallback;
 const isBool = (v: unknown) => typeof v === 'boolean';
+const isHex = (v: unknown) => typeof v === 'string' && HEX.test(v);
+const intIn = (lo: number, hi: number) => (v: unknown) =>
+  Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
+const clampNumber = (v: unknown, lo: number, hi: number, fallback: number) =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
 const oneOf = (list: readonly string[]) => (v: unknown) =>
   typeof v === 'string' && list.includes(v);
 
@@ -63,6 +85,12 @@ export function sanitizeSettings(input: unknown, base: Settings = DEFAULT_SETTIN
     autosave: pick(o.autosave, isBool, base.autosave),
     reopenLast: pick(o.reopenLast, isBool, base.reopenLast),
     checkUpdates: pick(o.checkUpdates, isBool, base.checkUpdates),
+    onionBefore: pick(o.onionBefore, intIn(0, MAX_ONION_FRAMES), base.onionBefore),
+    onionAfter: pick(o.onionAfter, intIn(0, MAX_ONION_FRAMES), base.onionAfter),
+    onionOpacity: clampNumber(o.onionOpacity, 0.1, 0.9, base.onionOpacity),
+    onionTint: pick(o.onionTint, isBool, base.onionTint),
+    onionBeforeColor: pick<string>(o.onionBeforeColor, isHex, base.onionBeforeColor).toLowerCase(),
+    onionAfterColor: pick<string>(o.onionAfterColor, isHex, base.onionAfterColor).toLowerCase(),
   };
 }
 

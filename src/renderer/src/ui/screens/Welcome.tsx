@@ -6,8 +6,8 @@ import { refreshRecent } from '@platform/recent';
 import type { RecentFile } from '@shared/settings';
 import { Logo } from '../chrome/Logo';
 import { Button, Chip, Chips, IconButton, Kbd } from '../components';
-import { useEditor } from '../editorContext';
 import { useRecentFiles } from '../useSettings';
+import { useDocuments } from '../documentsContext';
 
 const SIZES = [16, 32, 64, 128];
 const DAY = 24 * 60 * 60 * 1000;
@@ -31,7 +31,7 @@ function when(time: number, now = Date.now()): string {
 }
 
 function RecentRow({ file }: { file: RecentFile }) {
-  const editor = useEditor();
+  const docs = useDocuments();
   const Icon = file.name.toLowerCase().endsWith('.raster') ? FileText : FileImage;
   return (
     <li>
@@ -39,7 +39,7 @@ function RecentRow({ file }: { file: RecentFile }) {
         type="button"
         className="recent-row"
         title={file.path}
-        onClick={() => void openRecent(editor, file.path, file.name)}
+        onClick={() => void openRecent(docs, file.path, file.name)}
       >
         <Icon size={16} className="recent-icon" aria-hidden="true" />
         <span className="recent-text">
@@ -57,7 +57,7 @@ function RecentRow({ file }: { file: RecentFile }) {
  * Screen. Starting or opening a sprite closes it (Figma: Welcome).
  */
 export function Welcome({ actions, onClose }: { actions: Map<string, Action>; onClose(): void }) {
-  const editor = useEditor();
+  const docs = useDocuments();
   const recent = useRecentFiles();
   const [size, setSize] = useState(32);
   const run = (id: string) => actions.get(id)?.run();
@@ -85,7 +85,7 @@ export function Welcome({ actions, onClose }: { actions: Map<string, Action>; on
         </header>
 
         <div className="welcome-actions">
-          <Button variant="primary" onClick={() => newSprite(editor, size, size)}>
+          <Button variant="primary" onClick={() => newSprite(docs, size, size)}>
             New sprite
           </Button>
           <Button onClick={() => run('file.open')}>Open…</Button>

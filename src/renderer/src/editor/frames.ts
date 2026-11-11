@@ -1,4 +1,5 @@
-import { compositeFrame } from '@core/sprite';
+import { copyCelProps } from '@core/cels';
+import { compositeFrame, mapCels, type CompositeOptions, type Sprite } from '@core/sprite';
 import {
   cleanTag,
   nextPlaybackFrame,
@@ -8,7 +9,7 @@ import {
   type Tag,
 } from '@core/tags';
 import type { EditorCore } from './core';
-import { clampDuration } from './state';
+import { clampDuration, type EditorState } from './state';
 
 /**
  * Animation frames: navigation, adding and removing, linked cels, tags,
@@ -86,14 +87,34 @@ export class EditorFrames {
     );
   }
 
+  /**
+   * The frames Delete and Duplicate act on: the timeline's picked frames if
+   * the current frame is among them, else just the current frame.
+   */
+  selectedFrames(): [number, number] {
+    const { timelineSelection: sel, frame } = this.core.getState();
+    if (sel && frame >= sel.frames[0] && frame <= sel.frames[1]) return [...sel.frames];
+    return [frame, frame];
+  }
+
+  /** Duplicates the picked frames (or the current one) right after them. */
   duplicateFrame(): void {
+    const [lo, hi] = this.selectedFrames();
+    if (hi > lo) {
+      this.moveFrames(lo, hi, hi + 1, true);
+      return;
+    }
     const i = this.core.getState().frame;
     this.core.settle();
     const { sprite } = this.core;
     this.insertFrame(
       i + 1,
       sprite.frames[i].duration,
-      sprite.layers.map((l) => l.cels[i].slice()),
+      sprite.layers.map((l) => {
+        const copy = l.cels[i].slice();
+        copyCelProps(l.cels[i], copy);
+        return copy;
+      }),
       'Duplicate Frame',
     );
   }
@@ -128,6 +149,7 @@ export class EditorFrames {
     const f = core.getState().frame;
     const shared = layer.cels[f];
     const own = shared.slice();
+    copyCelProps(shared, own);
     layer.cels[f] = own;
     core.record({
       label: 'Unlink Cel',
@@ -137,67 +159,188 @@ export class EditorFrames {
     });
   }
 
+  /** Deletes the picked frames (or the current one). */
   deleteFrame(): void {
+    this.deleteFrames(...this.selectedFrames());
+  }
+
+  /** Deletes frames `lo`..`hi` (inclusive). At least one frame always stays. */
+  deleteFrames(lo: number, hi: number): void {
     const { core } = this;
-    if (this.frameCount <= 1) {
+    [lo, hi] = [Math.max(0, Math.min(lo, hi)), Math.min(this.frameCount - 1, Math.max(lo, hi))];
+    if (hi - lo + 1 >= this.frameCount) {
       core.notify('A sprite needs at least one frame');
       return;
     }
+    const count = hi - lo + 1;
+    this.changeFrames(
+      count > 1 ? 'Delete Frames' : 'Delete Frame',
+      (sprite) => {
+        sprite.frames.splice(lo, count);
+        for (const l of sprite.layers) l.cels.splice(lo, count);
+        for (let i = hi; i >= lo; i--) sprite.tags = tagsAfterDelete(sprite.tags, i);
+      },
+      Math.min(lo, this.frameCount - count - 1),
+      { timelineSelection: null },
+    );
+  }
+
+  /**
+   * Runs a change to the frame list (frames, cels, tags) as one undo step that
+   * restores everything as it was, then shows `frame`.
+   */
+  private changeFrames(
+    label: string,
+    change: (sprite: Sprite) => void,
+    frame: number,
+    patch: Partial<EditorState> = {},
+    /** The frame to show after undoing (default: the one shown before). */
+    frameUndo?: number,
+  ): void {
+    const { core } = this;
     core.settle();
     const { sprite } = core;
-    const i = core.getState().frame;
     const layers = [...sprite.layers];
-    const [frame] = sprite.frames.splice(i, 1);
-    const removed = layers.map((l) => l.cels.splice(i, 1)[0]);
-    const after = Math.min(i, sprite.frames.length - 1);
-    const tagsBefore = sprite.tags;
-    const tagsAfter = tagsAfterDelete(tagsBefore, i);
-    sprite.tags = tagsAfter;
+    const snap = () => ({
+      frames: [...sprite.frames],
+      cels: layers.map((l) => [...l.cels]),
+      tags: sprite.tags,
+    });
+    const restore = (state: ReturnType<typeof snap>) => {
+      sprite.frames.splice(0, sprite.frames.length, ...state.frames);
+      layers.forEach((l, i) => l.cels.splice(0, l.cels.length, ...state.cels[i]));
+      sprite.tags = state.tags;
+    };
+    const frameBefore = frameUndo ?? core.getState().frame;
+    const before = snap();
+    change(sprite);
+    const after = snap();
     core.history.push({
-      label: 'Delete Frame',
+      label,
       undo: () => {
-        sprite.frames.splice(i, 0, frame);
-        layers.forEach((l, k) => l.cels.splice(i, 0, removed[k]));
-        sprite.tags = tagsBefore;
-        core.stage({ frame: i });
+        restore(before);
+        core.stage({ frame: frameBefore, timelineSelection: null });
       },
       redo: () => {
-        sprite.frames.splice(i, 1);
-        layers.forEach((l) => l.cels.splice(i, 1));
-        sprite.tags = tagsAfter;
-        core.stage({ frame: after });
+        restore(after);
+        core.stage({ frame, ...patch });
       },
     });
-    core.commit({ frame: after, dirty: true });
+    core.commit({ frame, dirty: true, ...patch });
   }
 
   /** Moves the current frame earlier (-1) or later (+1). */
   moveFrame(delta: 1 | -1): void {
-    const { core } = this;
-    const from = core.getState().frame;
-    const to = from + delta;
-    if (to < 0 || to >= this.frameCount) return;
-    core.settle();
-    const { sprite } = core;
-    const layers = [...sprite.layers];
-    const swap = () => {
-      const f = sprite.frames;
-      [f[from], f[to]] = [f[to], f[from]];
-      for (const l of layers) [l.cels[from], l.cels[to]] = [l.cels[to], l.cels[from]];
-    };
-    swap();
-    core.history.push({
-      label: 'Move Frame',
-      undo: () => {
-        swap();
-        core.stage({ frame: from });
+    const from = this.core.getState().frame;
+    this.moveFrameTo(from, from + delta);
+  }
+
+  /**
+   * Moves frame `from` so it ends up at index `to`, with its cel on every
+   * layer, and selects it. Linked cels stay linked (they share one array);
+   * tags keep their frame numbers. One undo step.
+   */
+  moveFrameTo(from: number, to: number): void {
+    const n = this.frameCount;
+    if (from === to || from < 0 || to < 0 || from >= n || to >= n) return;
+    this.moveFrames(from, from, to > from ? to + 1 : to);
+  }
+
+  /**
+   * Moves frames `lo`..`hi` to the gap `slot` (0 = before the first frame,
+   * frameCount = after the last), or with `copy` inserts a copy of them there.
+   * Copies get their own cels (cels linked inside the block stay linked to
+   * each other). Moving keeps tags at their frame numbers; copying shifts the
+   * tags after the gap. The moved or copied frames end up selected.
+   */
+  moveFrames(lo: number, hi: number, slot: number, copy = false): void {
+    const n = this.frameCount;
+    if (lo < 0 || hi >= n || lo > hi || slot < 0 || slot > n) return;
+    const count = hi - lo + 1;
+    if (!copy && slot >= lo && slot <= hi + 1) return;
+    const start = copy || slot < lo ? slot : slot - count;
+    const offset = this.core.getState().frame - lo;
+    const current = start + (offset >= 0 && offset < count ? offset : 0);
+    const label = (copy ? 'Copy Frame' : 'Move Frame') + (count > 1 ? 's' : '');
+    this.changeFrames(
+      label,
+      (sprite) => {
+        if (copy) {
+          sprite.frames.splice(slot, 0, ...sprite.frames.slice(lo, hi + 1).map((f) => ({ ...f })));
+          for (const l of sprite.layers) {
+            l.cels.splice(slot, 0, ...mapCels(l.cels.slice(lo, hi + 1), (c) => c.slice()));
+          }
+          for (let i = 0; i < count; i++) sprite.tags = tagsAfterInsert(sprite.tags, slot);
+          return;
+        }
+        sprite.frames.splice(start, 0, ...sprite.frames.splice(lo, count));
+        for (const l of sprite.layers) l.cels.splice(start, 0, ...l.cels.splice(lo, count));
       },
-      redo: () => {
-        swap();
-        core.stage({ frame: to });
+      current,
+      { timelineSelection: { layerIds: [], frames: [start, start + count - 1] } },
+      // Undoing a move shows the moved frame back where it came from.
+      copy ? undefined : lo + (current - start),
+    );
+  }
+
+  /**
+   * Moves cels to other frames and layers, or with `copy` copies them.
+   * `sources` and `targets` are matching lists of layer ids (row by row);
+   * every cel in frames `lo`..`hi` of a source lands `dFrame` frames later
+   * in its target, replacing the cel there. Moving leaves empty cels behind.
+   * A cel moved within its layer keeps its buffer (and links); anything else
+   * gets its own copy. Nothing happens if a cel would land outside the sprite.
+   */
+  moveCels(
+    sources: string[],
+    targets: string[],
+    lo: number,
+    hi: number,
+    dFrame: number,
+    copy = false,
+  ): void {
+    const { sprite } = this.core;
+    const n = this.frameCount;
+    const byId = (id: string) => sprite.layers.find((l) => l.id === id);
+    const src = sources.map(byId);
+    const dst = targets.map(byId);
+    const valid =
+      src.length > 0 &&
+      src.length === dst.length &&
+      src.every(Boolean) &&
+      dst.every(Boolean) &&
+      lo >= 0 &&
+      lo <= hi &&
+      hi < n &&
+      lo + dFrame >= 0 &&
+      hi + dFrame < n &&
+      !(dFrame === 0 && src.every((l, i) => l === dst[i]));
+    if (!valid) return;
+    const size = sprite.width * sprite.height;
+    const frame = this.core.getState().frame;
+    this.changeFrames(
+      copy ? 'Copy Cels' : 'Move Cels',
+      () => {
+        // Read everything first, so overlapping moves don't read their own writes.
+        const picked = src.map((l) => l!.cels.slice(lo, hi + 1));
+        if (!copy) {
+          for (const l of src) for (let f = lo; f <= hi; f++) l!.cels[f] = new Uint32Array(size);
+        }
+        dst.forEach((l, i) => {
+          const sameLayer = l === src[i];
+          picked[i].forEach((cel, k) => {
+            let out = cel;
+            if (copy || !sameLayer) {
+              out = cel.slice();
+              copyCelProps(cel, out);
+            }
+            l!.cels[lo + k + dFrame] = out;
+          });
+        });
       },
-    });
-    core.commit({ frame: to, dirty: true });
+      Math.min(n - 1, Math.max(0, frame + dFrame)),
+      { timelineSelection: { layerIds: [...targets], frames: [lo + dFrame, hi + dFrame] } },
+    );
   }
 
   /** Sets one frame's duration (ms). Repeated edits to a frame merge into one undo step. */
@@ -303,7 +446,7 @@ export class EditorFrames {
   }
 
   /** Flattened image of any frame, for export, previews and onion skins. */
-  flattenFrame(frame: number): Uint32Array {
-    return compositeFrame(this.core.sprite, frame);
+  flattenFrame(frame: number, options?: CompositeOptions): Uint32Array {
+    return compositeFrame(this.core.sprite, frame, undefined, options);
   }
 }

@@ -54,6 +54,81 @@ describe('Editor frames', () => {
     expect(px(0, 0)).toBe(RED);
   });
 
+  describe('moveFrameTo', () => {
+    /** Four frames timed 100–400 ms, two layers, frame 0 drawn on. */
+    const fourFrames = () => {
+      const t = setup(4, 4);
+      t.drag('pencil', [0, 0], [0, 0]);
+      for (let i = 1; i < 4; i++) t.ed.addFrame();
+      t.ed.addLayer();
+      [100, 200, 300, 400].forEach((ms, i) => t.ed.setFrameDuration(i, ms));
+      t.ed.sealHistory();
+      return t;
+    };
+    const order = (ed: ReturnType<typeof setup>['ed']) => ed.getState().frames;
+
+    it('moves a frame later, with its cel on every layer', () => {
+      const { ed } = fourFrames();
+      const cels = ed.sprite.layers.map((l) => l.cels[0]);
+      ed.moveFrameTo(0, 2);
+      expect(order(ed)).toEqual([200, 300, 100, 400]);
+      expect(ed.getState().frame).toBe(2);
+      ed.sprite.layers.forEach((l, i) => expect(l.cels[2]).toBe(cels[i]));
+      expect(ed.sprite.layers[0].cels[2][0]).toBe(RED);
+    });
+
+    it('moves a frame earlier', () => {
+      const { ed } = fourFrames();
+      ed.moveFrameTo(3, 1);
+      expect(order(ed)).toEqual([100, 400, 200, 300]);
+      expect(ed.getState().frame).toBe(1);
+    });
+
+    it('undoes and redoes as one step', () => {
+      const { ed } = fourFrames();
+      ed.setFrame(3);
+      ed.moveFrameTo(0, 3);
+      expect(order(ed)).toEqual([200, 300, 400, 100]);
+      ed.undo();
+      expect(order(ed)).toEqual([100, 200, 300, 400]);
+      expect(ed.getState().frame).toBe(0);
+      ed.redo();
+      expect(order(ed)).toEqual([200, 300, 400, 100]);
+      expect(ed.getState().frame).toBe(3);
+    });
+
+    it('keeps linked cels linked', () => {
+      const { ed } = fourFrames();
+      ed.setFrame(0);
+      ed.duplicateLinkedFrame();
+      const shared = ed.activeLayer.cels[0];
+      expect(ed.activeLayer.cels[1]).toBe(shared);
+      ed.moveFrameTo(1, 4);
+      expect(ed.activeLayer.cels[0]).toBe(shared);
+      expect(ed.activeLayer.cels[4]).toBe(shared);
+    });
+
+    it('ignores moves to the same place or out of range', () => {
+      const { ed } = fourFrames();
+      const undoLabel = ed.getState().undoLabel;
+      ed.moveFrameTo(1, 1);
+      ed.moveFrameTo(-1, 2);
+      ed.moveFrameTo(0, 4);
+      expect(order(ed)).toEqual([100, 200, 300, 400]);
+      expect(ed.getState().undoLabel).toBe(undoLabel);
+    });
+
+    it('still swaps neighbours for Alt+arrow', () => {
+      const { ed } = fourFrames();
+      ed.setFrame(2);
+      ed.moveFrame(1);
+      expect(order(ed)).toEqual([100, 200, 400, 300]);
+      expect(ed.getState().frame).toBe(3);
+      ed.moveFrame(-1);
+      expect(order(ed)).toEqual([100, 200, 300, 400]);
+    });
+  });
+
   it('keeps every frame in sync for layer and canvas changes', () => {
     const { ed, drag } = setup(4, 4);
     ed.addFrame();

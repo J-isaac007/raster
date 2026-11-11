@@ -1,66 +1,79 @@
 import { FILE_EXTENSION, FormatError } from '@core/format';
-import type { Editor } from '@editor/editor';
 import { clampSpriteSize } from '@core/sprite';
-import { baseName, forgetFileHandle, openProjectFile } from '@platform/files';
+import type { PickedFile } from '@platform/desktop';
+import { baseName, newFileRef, openProjectFile } from '@platform/files';
 import { imageFileToSprite } from '@platform/image';
 import { readRecentFile } from '@platform/recent';
+import type { Documents } from './documents';
 import { importPaletteFile, isPaletteFile } from './palettes';
 
-/** Starts a blank sprite, after confirming if there are unsaved changes. Returns false if cancelled. */
-export function newSprite(editor: Editor, width: number, height: number): boolean {
-  if (editor.getState().dirty && !window.confirm('Discard unsaved changes?')) return false;
-  forgetFileHandle();
-  editor.newSprite(clampSpriteSize(width), clampSpriteSize(height));
+/** Starts a blank sprite in a new tab (or the untouched untitled one). */
+export function newSprite(docs: Documents, width: number, height: number): boolean {
+  docs.open((editor) => editor.newSprite(clampSpriteSize(width), clampSpriteSize(height)));
   return true;
 }
 
 /** Opens a file from the recent list (File menu, welcome screen, command palette). */
-export async function openRecent(editor: Editor, path: string, name: string): Promise<void> {
+export async function openRecent(docs: Documents, path: string, name: string): Promise<void> {
   const file = await readRecentFile(path);
-  if (file) await openAnyFile(editor, file);
-  else editor.notify(`${name} was moved or deleted`);
+  if (file) await openAnyFile(docs, file);
+  else docs.active().editor.notify(`${name} was moved or deleted`);
 }
 
 /**
- * Opens a `.raster` project or an image as a new document. Palette files are
- * imported into My palettes and applied to the open sprite instead.
+ * Opens a `.raster` project or an image in a tab of its own (or switches to
+ * its tab if it's already open). Palette files are imported into My palettes
+ * and applied to the active sprite instead.
  */
-export async function openAnyFile(editor: Editor, file: File): Promise<void> {
+export async function openAnyFile(docs: Documents, file: PickedFile): Promise<void> {
+  const notify = (message: string) => docs.active().editor.notify(message);
   if (isPaletteFile(file.name)) {
-    await importPaletteFile(editor, file, { apply: true });
+    await importPaletteFile(docs.active().editor, file, { apply: true });
     return;
   }
-  if (editor.getState().dirty && !window.confirm('Discard unsaved changes?')) return;
+  const open = file.path ? docs.list().find((d) => d.file.path === file.path) : undefined;
+  if (open) {
+    docs.activate(open.id);
+    return;
+  }
   try {
     if (file.name.toLowerCase().endsWith(FILE_EXTENSION)) {
-      const { sprite, palette, indexed, recentColors } = await openProjectFile(file);
-      editor.load(sprite, { palette, indexed, recentColors, fileName: baseName(file.name) });
+      const { project, ref } = await openProjectFile(file);
+      const { sprite, palette, indexed, recentColors } = project;
+      docs.open(
+        (editor) =>
+          editor.load(sprite, { palette, indexed, recentColors, fileName: baseName(file.name) }),
+        ref,
+      );
     } else if (file.type.startsWith('image/')) {
-      forgetFileHandle();
-      editor.load(await imageFileToSprite(file), { fileName: baseName(file.name), dirty: true });
+      const sprite = await imageFileToSprite(file);
+      docs.open(
+        (editor) => editor.load(sprite, { fileName: baseName(file.name), dirty: true }),
+        newFileRef(),
+      );
     } else {
-      editor.notify(`Can't open ${file.name}`);
+      notify(`Can't open ${file.name}`);
     }
   } catch (e) {
-    editor.notify(
+    notify(
       e instanceof FormatError || e instanceof RangeError ? e.message : `Can't open ${file.name}`,
     );
   }
 }
 
-/** Lets files be dropped anywhere on the window to open them. */
-export function acceptDroppedFiles(editor: Editor): () => void {
+/** Lets files be dropped anywhere on the window to open them, each in its own tab. */
+export function acceptDroppedFiles(docs: Documents): () => void {
   const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false;
   const onDragOver = (e: DragEvent) => {
     if (!hasFiles(e)) return;
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'copy';
   };
-  const onDrop = (e: DragEvent) => {
-    const file = e.dataTransfer?.files[0];
-    if (!file) return;
+  const onDrop = async (e: DragEvent) => {
+    const files = [...(e.dataTransfer?.files ?? [])];
+    if (files.length === 0) return;
     e.preventDefault();
-    void openAnyFile(editor, file);
+    for (const file of files) await openAnyFile(docs, file);
   };
   window.addEventListener('dragover', onDragOver);
   window.addEventListener('drop', onDrop);

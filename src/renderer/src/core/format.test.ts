@@ -76,12 +76,12 @@ describe('.raster format', () => {
     expect(parseProject(JSON.stringify(json)).indexed).toBe(false);
   });
 
-  it('round-trips recent colors as hex (version 5)', () => {
+  it('round-trips recent colors as hex (version 5+)', () => {
     const sprite = createSprite(1, 1);
     const recentColors = [rgba(255, 0, 77), rgba(41, 173, 255, 128), rgba(0, 0, 0)];
     const text = serializeProject({ sprite, palette: [], recentColors });
     const json = JSON.parse(text);
-    expect(json.version).toBe(5);
+    expect(json.version).toBeGreaterThanOrEqual(5);
     expect(json.recentColors).toEqual(['#ff004d', '#29adff80', '#000000']);
     expect(parseProject(text).recentColors).toEqual(recentColors);
     expect(JSON.parse(serializeProject({ sprite, palette: [] })).recentColors).toEqual([]);

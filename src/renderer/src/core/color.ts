@@ -133,3 +133,69 @@ export function blend(dst: Color, src: Color, opacity = 1): Color {
     Math.round(oa * 255),
   );
 }
+
+/** How a layer's colors combine with what's below it. */
+export const BLEND_MODES = [
+  'normal',
+  'multiply',
+  'screen',
+  'overlay',
+  'add',
+  'darken',
+  'lighten',
+  'difference',
+] as const;
+export type BlendMode = (typeof BLEND_MODES)[number];
+
+export const isBlendMode = (v: unknown): v is BlendMode =>
+  (BLEND_MODES as readonly unknown[]).includes(v);
+
+export const BLEND_MODE_LABELS: Record<BlendMode, string> = {
+  normal: 'Normal',
+  multiply: 'Multiply',
+  screen: 'Screen',
+  overlay: 'Overlay',
+  add: 'Add',
+  darken: 'Darken',
+  lighten: 'Lighten',
+  difference: 'Difference',
+};
+
+/** The blend function B(backdrop, source) for one 0..1 channel. */
+const MIX: Record<Exclude<BlendMode, 'normal'>, (b: number, s: number) => number> = {
+  multiply: (b, s) => b * s,
+  screen: (b, s) => b + s - b * s,
+  overlay: (b, s) => (b <= 0.5 ? 2 * b * s : 1 - 2 * (1 - b) * (1 - s)),
+  add: (b, s) => Math.min(1, b + s),
+  darken: (b, s) => Math.min(b, s),
+  lighten: (b, s) => Math.max(b, s),
+  difference: (b, s) => Math.abs(b - s),
+};
+
+/**
+ * Composites `src` over `dst` with a blend mode (straight alpha), scaling `src`
+ * by `opacity`. Where the backdrop is transparent the source shows as is; where
+ * it's opaque the source color becomes B(backdrop, source) (W3C compositing).
+ * `normal` is exactly `blend`.
+ */
+export function blendMode(dst: Color, src: Color, opacity: number, mode: BlendMode): Color {
+  if (mode === 'normal') return blend(dst, src, opacity);
+  const sa = (alpha(src) / 255) * opacity;
+  if (sa <= 0) return dst;
+  const da = alpha(dst) / 255;
+  const oa = sa + da * (1 - sa);
+  if (oa <= 0) return TRANSPARENT;
+  const fn = MIX[mode];
+  const channel = (s255: number, d255: number) => {
+    const s = s255 / 255;
+    const d = d255 / 255;
+    const mixed = (1 - da) * s + da * fn(d, s);
+    return Math.round(((mixed * sa + d * da * (1 - sa)) / oa) * 255);
+  };
+  return rgba(
+    channel(red(src), red(dst)),
+    channel(green(src), green(dst)),
+    channel(blue(src), blue(dst)),
+    Math.round(oa * 255),
+  );
+}

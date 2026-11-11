@@ -27,7 +27,7 @@ interface ExportSettings {
 }
 
 const flattenFrames = (editor: Editor, frames: number[]) =>
-  frames.map((i) => editor.flattenFrame(i));
+  frames.map((i) => editor.flattenFrame(i, { forExport: true }));
 
 function renderGif(editor: Editor, scale: number, frames: number[]): Uint8Array {
   const { width, height, frames: durations } = editor.getState();
@@ -57,7 +57,7 @@ function renderCanvas(editor: Editor, o: ExportSettings): HTMLCanvasElement {
     });
     return pixelsToCanvas(sheet.pixels, sheet.width, sheet.height, o.scale);
   }
-  return pixelsToCanvas(editor.flattenFrame(frame), width, height, o.scale);
+  return pixelsToCanvas(editor.flattenFrame(frame, { forExport: true }), width, height, o.scale);
 }
 
 export function ExportDialog({ onClose }: { onClose: () => void }) {

@@ -1,4 +1,5 @@
 import { alpha } from '@core/color';
+import { BLEND_MODE_LABELS, BLEND_MODES } from '@core/color';
 import { FormatError } from '@core/format';
 import type { Editor, EditorState } from '@editor/editor';
 import { readClipboardImage, writeClipboardImage } from '@platform/clipboard';
@@ -6,6 +7,7 @@ import { baseName, pickFile, saveProject } from '@platform/files';
 import { TOOLS } from '@editor/tools';
 import { decodeImage } from '@platform/image';
 import { clearRecent } from '@platform/recent';
+import type { Documents } from './documents';
 import { openAnyFile } from './openFile';
 import { exportPalette, importPaletteFile, PALETTE_ACCEPT } from './palettes';
 import { checkForUpdates } from './updates';
@@ -20,6 +22,8 @@ export type DialogId =
   | 'about'
   | 'tag'
   | 'paletteColor'
+  /** Opacity of the cels picked in the timeline. */
+  | 'celProperties'
   /** The palette browser. */
   | 'palettes'
   /** The palette browser, naming a new entry for the current palette. */
@@ -82,15 +86,24 @@ export async function pasteClipboard(editor: Editor, data?: DataTransfer | null)
   }
 }
 
-export function createActions(editor: Editor, openDialog: (id: DialogId) => void): Action[] {
+/**
+ * Every command, for the active tab's `editor`. Rebuild them when the active
+ * tab changes; tab commands act on `docs`.
+ */
+export function createActions(
+  docs: Documents,
+  editor: Editor,
+  openDialog: (id: DialogId) => void,
+): Action[] {
   const fail = (e: unknown) =>
     editor.notify(
       e instanceof FormatError || e instanceof RangeError ? e.message : 'Something went wrong',
     );
 
   const save = async (saveAs: boolean) => {
+    const doc = docs.active();
     try {
-      const name = await saveProject(editor.project, editor.getState().fileName, saveAs);
+      const name = await saveProject(editor.project, editor.getState().fileName, doc.file, saveAs);
       if (name) {
         editor.markSaved(baseName(name));
         editor.notify(`Saved ${name}`);
@@ -100,7 +113,11 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
     }
   };
 
-  const hasLayerBelow = (s: EditorState) => s.layers.findIndex((l) => l.id === s.activeLayerId) > 0;
+  /** A layer below the active one, in the same group, to merge into. */
+  const hasLayerBelow = (s: EditorState) => {
+    const i = s.layers.findIndex((l) => l.id === s.activeLayerId);
+    return i > 0 && s.layers[i - 1].groupId === s.layers[i].groupId;
+  };
   const hasSelection = (s: EditorState) => s.selection !== null;
   const isTransforming = (s: EditorState) => s.transform !== null;
 
@@ -117,7 +134,7 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       keys: ['mod+o'],
       run: async () => {
         const file = await pickFile('.raster,application/json');
-        if (file) await openAnyFile(editor, file);
+        if (file) await openAnyFile(docs, file);
       },
     },
     {
@@ -126,10 +143,39 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       keys: ['mod+i'],
       run: async () => {
         const file = await pickFile('image/png,image/gif,image/webp,image/jpeg,image/bmp');
-        if (file) await openAnyFile(editor, file);
+        if (file) await openAnyFile(docs, file);
       },
     },
     { id: 'file.save', label: 'Save', keys: ['mod+s'], run: () => save(false) },
+    {
+      id: 'file.close',
+      label: 'Close Tab',
+      keys: ['mod+w', 'mod+F4'],
+      run: () => {
+        const last = docs.list().length === 1;
+        if (docs.close(docs.active().id) && last) openDialog('welcome');
+      },
+    },
+    {
+      id: 'file.closeOthers',
+      label: 'Close Other Tabs',
+      run: () => docs.closeOthers(docs.active().id),
+      enabled: () => docs.list().length > 1,
+    },
+    {
+      id: 'view.nextTab',
+      label: 'Next Tab',
+      keys: ['mod+Tab', 'mod+PageDown'],
+      run: () => docs.cycle(1),
+      enabled: () => docs.list().length > 1,
+    },
+    {
+      id: 'view.prevTab',
+      label: 'Previous Tab',
+      keys: ['mod+shift+Tab', 'mod+PageUp'],
+      run: () => docs.cycle(-1),
+      enabled: () => docs.list().length > 1,
+    },
     { id: 'file.saveAs', label: 'Save As…', keys: ['mod+shift+s'], run: () => save(true) },
     {
       id: 'file.preferences',
@@ -352,6 +398,38 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       run: () => editor.mergeDown(),
       enabled: hasLayerBelow,
     },
+    {
+      id: 'layer.group',
+      label: 'Group Layers',
+      keys: ['mod+g'],
+      run: () => editor.groupLayers(),
+    },
+    {
+      id: 'layer.ungroup',
+      label: 'Ungroup',
+      keys: ['mod+shift+g'],
+      run: () => editor.ungroup(),
+      enabled: (s) =>
+        s.activeGroupId !== null || !!s.layers.find((l) => l.id === s.activeLayerId)?.groupId,
+    },
+    {
+      id: 'layer.reference',
+      label: 'Toggle Reference Layer',
+      run: () => {
+        const { layers, activeLayerId } = editor.getState();
+        const layer = layers.find((l) => l.id === activeLayerId);
+        if (layer) editor.updateLayer(layer.id, { reference: !layer.reference });
+      },
+    },
+    ...BLEND_MODES.map((mode) => ({
+      id: `layer.blend.${mode}`,
+      label: `Blend Mode: ${BLEND_MODE_LABELS[mode]}`,
+      run: () => {
+        const { activeGroupId, activeLayerId } = editor.getState();
+        if (activeGroupId) editor.updateGroup(activeGroupId, { blendMode: mode });
+        else editor.updateLayer(activeLayerId, { blendMode: mode });
+      },
+    })),
 
     { id: 'view.zoomIn', label: 'Zoom In', keys: ['=', 'mod+='], run: () => editor.zoomStep(1) },
     { id: 'view.zoomOut', label: 'Zoom Out', keys: ['-', 'mod+-'], run: () => editor.zoomStep(-1) },
@@ -416,6 +494,11 @@ export function createActions(editor: Editor, openDialog: (id: DialogId) => void
       label: 'Duplicate Linked Frame',
       keys: ['shift+alt+d'],
       run: () => editor.duplicateLinkedFrame(),
+    },
+    {
+      id: 'frame.celProperties',
+      label: 'Cel Properties…',
+      run: () => openDialog('celProperties'),
     },
     {
       id: 'frame.unlink',

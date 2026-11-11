@@ -1,6 +1,7 @@
 import type { Adjustment } from '@core/adjust';
 import { makeCustomBrush } from '@core/brush';
 import { blend, TRANSPARENT, type Color } from '@core/color';
+import { celOpacity } from '@core/cels';
 import { History, type Command } from '@core/history';
 import type { SelectMode } from '@core/mask';
 import { getPixel, inBounds, type Selection } from '@core/raster';
@@ -8,11 +9,13 @@ import {
   composite,
   createSprite,
   showFrame,
+  type CompositeOptions,
   type Layer,
   type Sprite,
   type Surface,
 } from '@core/sprite';
 import type { Project } from '@core/format';
+import { groupChain } from '@core/groups';
 import type { Tag } from '@core/tags';
 import type { Transform, TransformQuality } from '@core/transform';
 import { EditorAdjust } from './adjust';
@@ -24,12 +27,14 @@ import { EditorLayers } from './layers';
 import { EditorPalette } from './palette';
 import { EditorSelection } from './selection';
 import {
+  groupInfo,
   initialState,
   layerInfo,
   MAX_BRUSH,
   type EditorOptions,
   type EditorState,
   type ReferenceSettings,
+  type TimelineSelection,
   type ToolId,
 } from './state';
 import { EditorStrokes } from './strokes';
@@ -38,9 +43,11 @@ import { EditorView } from './view';
 export type {
   EditorState,
   FreeTransformInfo,
+  GroupInfo,
   LayerInfo,
   ReferenceSettings,
   TileMode,
+  TimelineSelection,
   ToolId,
 } from './state';
 export { MAX_BRUSH, ZOOM_STEPS } from './state';
@@ -115,7 +122,17 @@ export class Editor {
       width: this.sprite.width,
       height: this.sprite.height,
       layers: layers.map(layerInfo),
+      groups: this.sprite.groups.map(groupInfo),
       activeLayerId,
+      activeGroupId: this.sprite.groups.some(
+        (g) =>
+          g.id ===
+          (patch.activeGroupId !== undefined ? patch.activeGroupId : this.state.activeGroupId),
+      )
+        ? patch.activeGroupId !== undefined
+          ? patch.activeGroupId
+          : this.state.activeGroupId
+        : null,
       frame,
       frames: this.sprite.frames.map((f) => f.duration),
       tags: this.sprite.tags,
@@ -168,6 +185,10 @@ export class Editor {
   private canEdit(layer: Layer): boolean {
     if (!layer.visible) {
       this.notify('Layer is hidden');
+      return false;
+    }
+    if (groupChain(this.sprite.groups, layer.groupId).some((g) => !g.visible)) {
+      this.notify('Layer is in a hidden group');
       return false;
     }
     if (layer.locked) {
@@ -397,10 +418,23 @@ export class Editor {
   addLayer = () => this.layers.addLayer();
   duplicateLayer = (id?: string) => this.layers.duplicateLayer(id);
   deleteLayer = (id?: string) => this.layers.deleteLayer(id);
-  moveLayer = (id: string, delta: 1 | -1) => this.layers.moveLayer(id, delta);
+  /** Moves a layer, or with `null` the picked layer or group. */
+  moveLayer = (id: string | null, delta: 1 | -1) => this.layers.moveLayer(id, delta);
   mergeDown = (id?: string) => this.layers.mergeDown(id);
   updateLayer = (...args: Parameters<EditorLayers['updateLayer']>) =>
     this.layers.updateLayer(...args);
+  setActiveGroup = (id: string) => this.layers.setActiveGroup(id);
+  groupLayers = () => this.layers.groupLayers();
+  ungroup = () => this.layers.ungroup();
+  updateGroup = (...args: Parameters<EditorLayers['updateGroup']>) =>
+    this.layers.updateGroup(...args);
+  setCelOpacity = (layerIds: string | string[], frames: number[], opacity: number) =>
+    this.layers.setCelOpacity(layerIds, frames, opacity);
+  /** Opacity (0..1) of a layer's cel in `frame`. */
+  celOpacity = (layerId: string, frame: number) => {
+    const cel = this.sprite.layers.find((l) => l.id === layerId)?.cels[frame];
+    return cel ? celOpacity(cel) : 1;
+  };
   clearLayer = () => this.layers.clearLayer();
   flip = (axis: 'horizontal' | 'vertical', scope: 'layer' | 'sprite') =>
     this.layers.flip(axis, scope);
@@ -507,11 +541,20 @@ export class Editor {
   advancePlayback = () => this.frames.advancePlayback();
   deleteFrame = () => this.frames.deleteFrame();
   moveFrame = (delta: 1 | -1) => this.frames.moveFrame(delta);
+  moveFrameTo = (from: number, to: number) => this.frames.moveFrameTo(from, to);
+  moveFrames = (lo: number, hi: number, slot: number, copy?: boolean) =>
+    this.frames.moveFrames(lo, hi, slot, copy);
+  deleteFrames = (lo: number, hi: number) => this.frames.deleteFrames(lo, hi);
+  moveCels = (...args: Parameters<EditorFrames['moveCels']>) => this.frames.moveCels(...args);
+  /** Picks cels or frames in the timeline (not undoable). */
+  setTimelineSelection = (timelineSelection: TimelineSelection | null) =>
+    this.set({ timelineSelection });
   setFrameDuration = (frame: number, ms: number) => this.frames.setFrameDuration(frame, ms);
   setAllFrameDurations = (ms: number) => this.frames.setAllFrameDurations(ms);
   setPlaying = (playing: boolean) => this.frames.setPlaying(playing);
   setOnionSkin = (onionSkin: boolean) => this.frames.setOnionSkin(onionSkin);
-  flattenFrame = (frame: number) => this.frames.flattenFrame(frame);
+  flattenFrame = (frame: number, options?: CompositeOptions) =>
+    this.frames.flattenFrame(frame, options);
 
   // ---- view & tiles (view.ts) ----------------------------------------------
 
@@ -541,8 +584,8 @@ export class Editor {
   zoomStep = (dir: 1 | -1, sx?: number, sy?: number) => this.view.zoomStep(dir, sx, sy);
   zoomToFit = () => this.view.zoomToFit();
 
-  /** Flattened image, for export and previews. */
+  /** Flattened image as exported (reference layers left out). */
   flatten(): Uint32Array {
-    return composite(this.sprite);
+    return composite(this.sprite, undefined, { forExport: true });
   }
 }

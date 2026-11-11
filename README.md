@@ -27,8 +27,10 @@ works offline, needs no account, and keeps your work on your machine.
   colors or the current color
 - **Pixel art brushes**: pixel-perfect strokes, ordered dithering and
   palette-aware shading
-- **Animation**: frames, timeline, onion skinning, per-frame timing and
-  playback; export animated GIFs and sprite sheets with JSON frame data
+- **Animation**: a layers × frames timeline where you pick, drag and copy
+  frames and cels, scrub, and set per-cel opacity; onion skinning with
+  adjustable range, tint and opacity; per-frame timing and playback; export
+  animated GIFs and sprite sheets with JSON frame data
 - **Tiles**: tile mode for seamless textures, tile grid for tilesets, and a
   reference image overlay for tracing
 - **Selection**: rectangle select, move, cut, copy and paste (including images
@@ -38,7 +40,11 @@ works offline, needs no account, and keeps your work on your machine.
   stay crisp, no new colors). Quarter turns, flips and scaling for a selection
   or the whole sprite; crop to selection and trim empty edges
 - **Symmetry**: mirror strokes horizontally, vertically or both
-- **Layers**: reorder, merge, rename, set opacity, hide and lock
+- **Layers**: groups (nested, foldable), blend modes (multiply, screen,
+  overlay, add, darken, lighten, difference), reference layers that never
+  export; reorder, merge, rename, set opacity, hide and lock
+- **Tabs**: several sprites open at once, each with its own undo history;
+  every tab comes back after a restart
 - **Colors**: color wheel, primary and secondary colors with alpha, hex
   entry, recent colors saved with the sprite, hue-shifted ramps for shading,
   indexed color mode and palette swapping
@@ -107,39 +113,43 @@ How the code fits together: [docs/architecture.md](docs/architecture.md).
 
 ## Using Raster
 
-| Action                        | Input                                   |
-| ----------------------------- | --------------------------------------- |
-| Draw with primary / secondary | Left / right click                      |
-| Pick a color                  | `Alt` + click, or the picker (`I`)      |
-| Straight line from last point | `Shift` + click (pencil, eraser)        |
-| Snap lines and square shapes  | Hold `Shift` while dragging             |
-| Pan                           | `Space` + drag, or middle mouse         |
-| Zoom at cursor                | Mouse wheel                             |
-| Tools                         | `M` `Q` `W` `B` `E` `G` `L` `U` `O` `I` |
-| Move a selection              | Drag inside it (selection tools)        |
-| Add to / subtract a selection | `Shift` / `Ctrl` (lasso, wand)          |
-| Invert selection              | `Ctrl+Shift+I`                          |
-| Cut / copy / paste            | `Ctrl+X` / `Ctrl+C` / `Ctrl+V`          |
-| Select all / deselect         | `Ctrl+A` / `Ctrl+D`                     |
-| Play / pause animation        | `Enter`                                 |
-| Previous / next frame         | `←` / `→`                               |
-| New / duplicate frame         | `Alt+N` / `Alt+D`                       |
-| Duplicate as linked frame     | `Shift+Alt+D`                           |
-| New tag (named loop)          | `Alt+T`                                 |
-| Onion skin                    | `Shift+O`                               |
-| Tile mode / tile grid         | `Shift+T` / `Shift+G`                   |
-| Swap colors                   | `X`                                     |
-| Swap a palette color          | Double-click it                         |
-| Indexed color mode            | `Shift+I`                               |
-| Browse palettes               | `Ctrl+Alt+P`                            |
-| Hue/saturation / desaturate   | `Ctrl+U` / `Ctrl+Shift+U`               |
-| Flip selection or layer       | `Shift+H` / `Shift+V`                   |
-| Rotate / scale with handles   | `Ctrl+T`, then `Enter` / `Esc`          |
-| Sprite size (scale)           | `Ctrl+Alt+I`                            |
-| Brush size                    | `[` and `]`                             |
-| Brush from selection / square | `Ctrl+B` / `Ctrl+Shift+B`               |
-| Undo / redo                   | `Ctrl+Z` / `Ctrl+Shift+Z`               |
-| All shortcuts                 | `?`                                     |
+| Action                              | Input                                   |
+| ----------------------------------- | --------------------------------------- |
+| Draw with primary / secondary       | Left / right click                      |
+| Pick a color                        | `Alt` + click, or the picker (`I`)      |
+| Straight line from last point       | `Shift` + click (pencil, eraser)        |
+| Snap lines and square shapes        | Hold `Shift` while dragging             |
+| Pan                                 | `Space` + drag, or middle mouse         |
+| Zoom at cursor                      | Mouse wheel                             |
+| Tools                               | `M` `Q` `W` `B` `E` `G` `L` `U` `O` `I` |
+| Move a selection                    | Drag inside it (selection tools)        |
+| Add to / subtract a selection       | `Shift` / `Ctrl` (lasso, wand)          |
+| Invert selection                    | `Ctrl+Shift+I`                          |
+| Cut / copy / paste                  | `Ctrl+X` / `Ctrl+C` / `Ctrl+V`          |
+| Select all / deselect               | `Ctrl+A` / `Ctrl+D`                     |
+| Play / pause animation              | `Enter`                                 |
+| Previous / next frame               | `←` / `→`                               |
+| New / duplicate frame               | `Alt+N` / `Alt+D`                       |
+| Duplicate as linked frame           | `Shift+Alt+D`                           |
+| New tag (named loop)                | `Alt+T`                                 |
+| Onion skin                          | `Shift+O`                               |
+| Tile mode / tile grid               | `Shift+T` / `Shift+G`                   |
+| Swap colors                         | `X`                                     |
+| Swap a palette color                | Double-click it                         |
+| Indexed color mode                  | `Shift+I`                               |
+| Browse palettes                     | `Ctrl+Alt+P`                            |
+| Hue/saturation / desaturate         | `Ctrl+U` / `Ctrl+Shift+U`               |
+| Group / ungroup layers              | `Ctrl+G` / `Ctrl+Shift+G`               |
+| Next / previous tab                 | `Ctrl+Tab` / `Ctrl+Shift+Tab`           |
+| Close tab                           | `Ctrl+W`                                |
+| Copy while dragging in the timeline | Hold `Ctrl`                             |
+| Flip selection or layer             | `Shift+H` / `Shift+V`                   |
+| Rotate / scale with handles         | `Ctrl+T`, then `Enter` / `Esc`          |
+| Sprite size (scale)                 | `Ctrl+Alt+I`                            |
+| Brush size                          | `[` and `]`                             |
+| Brush from selection / square       | `Ctrl+B` / `Ctrl+Shift+B`               |
+| Undo / redo                         | `Ctrl+Z` / `Ctrl+Shift+Z`               |
+| All shortcuts                       | `?`                                     |
 
 On macOS, use `⌘` in place of `Ctrl`.
 
@@ -163,8 +173,10 @@ Done so far:
 - [x] Palette library: built-in palettes, My palettes, six import formats
 - [x] Transform with the mouse: scale and rotate handles on the canvas
 - [x] Color and paint: color wheel, ramps, gradients, polygons, Adjust menu
+- [x] Documents and layers: tabs, layer groups, blend modes, reference layers,
+      a layers × frames timeline
 
-Next up: tabs, layer groups and blend modes, then tilemaps and engine export. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are
+Next up: tilemaps, slices and engine export, then APNG/WebP export and a text tool. The full plan is in [docs/roadmap.md](docs/roadmap.md). Ideas and votes are
 welcome in the issue tracker.
 
 ## Privacy

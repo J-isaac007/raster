@@ -43,7 +43,7 @@ export function describeUpdate(s: UpdateStatus): string | null {
 }
 
 /** Starts listening to the updater and, if enabled, checks once at launch. */
-export function startUpdates(editor: Editor): void {
+export function startUpdates(notify: (message: string) => void): void {
   if (!desktop) return;
   const bridge = desktop;
   bridge.onUpdateStatus((next) => {
@@ -53,7 +53,7 @@ export function startUpdates(editor: Editor): void {
     // checks stay quiet until an update is ready (the banner shows it).
     if ('manual' in next && next.manual) {
       const text = describeUpdate(next);
-      if (text) editor.notify(text);
+      if (text) notify(text);
     }
   });
   void bridge.getUpdateStatus().then((s) => {

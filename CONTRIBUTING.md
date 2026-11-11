@@ -46,33 +46,37 @@ src/
   renderer/   The page
     index.html
     src/
-      main.tsx   Bootstrap: load settings, restore autosave or show the welcome
-                 screen, wire files and updates, render
+      main.tsx   Bootstrap: load settings, restore the autosaved tabs or show the
+                 welcome screen, wire files and updates, render
       core/      Pure engine, see below
       editor/    The document store, see below
       platform/  I/O adapters
         desktop.ts   The `window.raster` bridge and file-type helpers
-        files.ts     Open and save dialogs, project saving (Ctrl+S overwrites)
+        files.ts     Open and save dialogs, project saving (Ctrl+S overwrites the
+                     tab's FileRef)
         image.ts     PNG encode/decode, importing images and animated GIFs
         clipboard.ts Copying and pasting images on the system clipboard
         settings.ts  The page's copy of the preferences (read sync, saved via main)
         recent.ts    The recent-files list
       app/       Wiring across layers
         commands.ts  Every menu command and keyboard shortcut
-        openFile.ts  Opening dropped files and files from Explorer
-        autosave.ts  localStorage autosave
+        documents.ts The open documents (tabs): one Editor and FileRef each
+        openFile.ts  Opening dropped files and files from Explorer, into tabs
+        autosave.ts  localStorage autosave of every tab
         updates.ts   Update status, startup check and messages
         preferences.ts Keeps the editor in step with preferences
         commandSearch.ts Fuzzy matching for the command palette
       ui/        React components
         App.tsx         Layout and dialogs
         editorContext.ts React bindings (useEditor, useEditorState)
+        documentsContext.ts The open tabs (useDocuments, useTabs)
         components/     Shared primitives: Button, IconButton, Chip, TextInput, Select,
                         Checkbox, Slider, Swatch, ColorWheel, PanelSection, Kbd,
                         TooltipLayer
         canvas/         The drawing surface (renders outside React for speed)
-        chrome/         Menu bar, toolbar, tool options, status bar, logo
-        panels/         Color, palette, layers, reference, timeline
+        chrome/         Menu bar, tab bar, toolbar, tool options, status bar, logo
+        panels/         Color, palette, layer properties, reference
+        timeline/       The layers × frames timeline and onion skin options
         dialogs/        One file per dialog, plus the shared Dialog shell and
                         AdjustDialog (the docked shell of the Adjust menu's dialogs)
         screens/        Welcome screen and command palette
@@ -86,8 +90,10 @@ The pure engine and the store, in more detail:
 
 ```
 core/     Pure TypeScript. No DOM, no React. Fully unit tested.
-    color.ts     Packed RGBA colors, hex parsing, alpha blending
-    sprite.ts    Sprite and layer model, compositing, flip, resize
+    color.ts     Packed RGBA colors, hex parsing, alpha blending, blend modes
+    sprite.ts    Sprite, layer and group model, compositing, flip, resize
+    groups.ts    Layer groups: rows, spans, moving in and out, undo snapshots
+    cels.ts      Per-cel properties (opacity), keyed by the cel's buffer
     raster.ts    Drawing primitives: line, rect, rounded rect, ellipse, polygon,
                  brush, flood fill
     mask.ts      Selection masks: lasso, magic wand, add/subtract, outlines
@@ -113,8 +119,10 @@ editor/   The document store. No DOM, no React.
     selection.ts Selection, floating pixels, copy/cut/paste
     freeTransform.ts The open Ctrl+T transform: live preview, apply, cancel
     adjust.ts    Adjust menu previews on the selection or cel: apply, cancel
-    layers.ts    Layer stack: add, delete, reorder, merge, flip, properties
-    frames.ts    Animation frames, linked cels, tags, durations, playback
+    layers.ts    Layer stack: add, delete, reorder, group, merge, flip,
+                 layer, group and cel properties
+    frames.ts    Animation frames, linked cels, tags, durations, playback,
+                 moving and copying frames and cels
     palette.ts   Palette changes, palette swaps and indexed color mode
     view.ts      Viewport, zoom and pan, tile wrapping, reference image
     geometry.ts  Whole-sprite reshapes: canvas size, scale, rotate, crop, trim

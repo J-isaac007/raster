@@ -104,6 +104,14 @@ and mirrored in `tsconfig.web.json`.
    when their slice changes. The canvas redraws outside React, on the next
    animation frame after a revision change.
 
+The layer stack is a flat list (`core/sprite.ts`); groups are labels on
+contiguous runs of it (`core/groups.ts` reads and reshapes them, and
+`snapshotStack` / `restoreStack` make structural changes undoable).
+`composite` walks the stack once, blending each layer with its blend mode,
+opacity and cel opacity, and composites non-pass-through groups in scratch
+buffers. Per-cel properties live in `core/cels.ts`, keyed by the cel's
+buffer, so linked cels share them and frame moves carry them along.
+
 ### Opening and saving
 
 - **Open dialog:** `platform/files.ts` → `window.raster.openFile` →
@@ -115,9 +123,16 @@ and mirrored in `tsconfig.web.json`.
 - **Save:** `platform/files.ts` serializes the project (`core/format.ts`)
   and calls `saveFile` with the path it was opened from. Main overwrites
   it only if the path is trusted, otherwise it shows a save dialog.
-- **Autosave:** `app/autosave.ts` keeps the current sprite in
-  `localStorage` and restores it on start. The dirty flag goes to main
-  (`doc:dirty`) for the quit warning.
+- **Tabs:** `app/documents.ts` holds the open documents. Each one has its
+  own `Editor` and a `FileRef` (where it was opened from or saved to), so
+  every tab keeps its own undo history and Ctrl+S target. `ui/App.tsx`
+  renders the active tab's editor through `EditorContext` and rebuilds the
+  commands when the tab changes. Opening a file goes to a new tab, or to an
+  untouched untitled one.
+- **Autosave:** `app/autosave.ts` keeps every tab in `localStorage` (one key
+  each, plus an index with the tab order) and restores them on start. Main
+  gets a dirty flag (`doc:dirty`) that's on if any tab is unsaved, for the
+  quit warning.
 
 ### Updates
 

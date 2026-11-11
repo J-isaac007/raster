@@ -8,6 +8,7 @@ import { useEditor, useEditorState } from '../editorContext';
 import { useRecentFiles } from '../useSettings';
 import { Logo } from './Logo';
 import { UpdateBadge } from './UpdateBadge';
+import { useDocuments } from '../documentsContext';
 
 /** An action id, a separator, or the recent-files group. */
 type MenuEntry = string | '-' | 'recent';
@@ -92,7 +93,17 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
   },
   {
     label: 'Layer',
-    items: ['layer.new', 'layer.duplicate', 'layer.delete', '-', 'layer.mergeDown'],
+    items: [
+      'layer.new',
+      'layer.duplicate',
+      'layer.delete',
+      '-',
+      'layer.group',
+      'layer.ungroup',
+      'layer.reference',
+      '-',
+      'layer.mergeDown',
+    ],
   },
   {
     label: 'Frame',
@@ -102,6 +113,7 @@ const MENUS: { label: string; items: MenuEntry[] }[] = [
       'frame.duplicateLinked',
       'frame.delete',
       '-',
+      'frame.celProperties',
       'frame.unlink',
       'frame.newTag',
       '-',
@@ -165,6 +177,7 @@ export function MenuBar({ actions }: { actions: Map<string, Action> }) {
   const [open, setOpen] = useState<number | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const editor = useEditor();
+  const docs = useDocuments();
   const recent = useRecentFiles();
   // Everything that affects titles or `enabled` checks; avoids re-rendering on cursor moves.
   const state = useEditorState((s) => ({
@@ -218,7 +231,7 @@ export function MenuBar({ actions }: { actions: Map<string, Action> }) {
           title={f.path}
           onClick={() => {
             setOpen(null);
-            void openRecent(editor, f.path, f.name);
+            void openRecent(docs, f.path, f.name);
           }}
         >
           <span className="menu-recent">

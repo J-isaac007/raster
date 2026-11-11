@@ -7,15 +7,6 @@ change; versions are targets, not promises. Ideas and votes are welcome in the
 
 Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 
-## 0.8: Documents and layers
-
-- Several sprites open at once, in tabs
-- Layer groups
-- Blend modes: multiply, screen, overlay, add, darken, lighten, difference
-- Per-cel opacity and reference layers (shown, never exported)
-- A better timeline: select many frames and cels, drag to move or copy, scrub
-- More onion skin options: how many frames, tint colors, opacity
-
 ## 0.9: Game development
 
 - Tilemap layers and tilesets
@@ -59,3 +50,6 @@ Raster stays free, offline and private: no accounts, no cloud, no telemetry.
 - 0.7: color wheel and recent colors; hue-shifted ramps; gradient tool;
   rounded rectangles and polygons; the Adjust menu (hue/saturation, replace
   color, invert, desaturate, outline, drop shadow)
+- 0.8: tabs for several sprites; layer groups; blend modes; reference layers;
+  per-cel opacity; a layers × frames timeline (pick, drag, copy, scrub);
+  onion skin range, tint and opacity

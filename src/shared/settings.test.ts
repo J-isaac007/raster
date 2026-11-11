@@ -44,6 +44,26 @@ describe('sanitizeSettings', () => {
   });
 });
 
+describe('onion skin settings', () => {
+  it('keeps frame counts, opacity and colors in range', () => {
+    const s = sanitizeSettings({
+      onionBefore: 3,
+      onionAfter: 9,
+      onionOpacity: 2,
+      onionTint: 'yes',
+      onionBeforeColor: '#ABCDEF',
+      onionAfterColor: 'blue',
+    });
+    expect(s.onionBefore).toBe(3);
+    expect(s.onionAfter).toBe(DEFAULT_SETTINGS.onionAfter);
+    expect(s.onionOpacity).toBe(0.9);
+    expect(s.onionTint).toBe(DEFAULT_SETTINGS.onionTint);
+    expect(s.onionBeforeColor).toBe('#abcdef');
+    expect(s.onionAfterColor).toBe(DEFAULT_SETTINGS.onionAfterColor);
+    expect(sanitizeSettings({ onionBefore: 1.5, onionOpacity: 0 }).onionOpacity).toBe(0.1);
+  });
+});
+
 describe('recent files', () => {
   const file = (path: string, openedAt: number): RecentFile => ({ path, name: path, openedAt });
 

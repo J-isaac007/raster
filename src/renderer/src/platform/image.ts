@@ -74,6 +74,7 @@ export async function imageFileToSprite(file: File): Promise<Sprite> {
       width: gif.width,
       height: gif.height,
       layers: [layer],
+      groups: [],
       frames: frames.map((f) => ({ duration: f.delayMs })),
       tags: [],
     };
@@ -81,5 +82,12 @@ export async function imageFileToSprite(file: File): Promise<Sprite> {
   const { width, height, pixels } = await decodeImage(file);
   const layer = createLayer(width, height, baseName(file.name));
   layer.pixels.set(pixels);
-  return { width, height, layers: [layer], frames: [{ duration: DEFAULT_FRAME_MS }], tags: [] };
+  return {
+    width,
+    height,
+    layers: [layer],
+    groups: [],
+    frames: [{ duration: DEFAULT_FRAME_MS }],
+    tags: [],
+  };
 }

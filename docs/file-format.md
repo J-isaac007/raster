@@ -1,11 +1,11 @@
 # The `.raster` file format
 
-A `.raster` file is UTF-8 JSON. Version 5 looks like this:
+A `.raster` file is UTF-8 JSON. Version 6 looks like this:
 
 ```json
 {
   "format": "raster",
-  "version": 5,
+  "version": 6,
   "width": 32,
   "height": 32,
   "palette": ["#000000", "#ff004d", "#29adff80"],
@@ -13,13 +13,36 @@ A `.raster` file is UTF-8 JSON. Version 5 looks like this:
   "recentColors": ["#ef7d57", "#29adff"],
   "frames": [{ "duration": 100 }, { "duration": 150 }, { "duration": 100 }],
   "tags": [{ "name": "walk", "from": 0, "to": 1 }],
+  "groups": [
+    {
+      "name": "Body",
+      "parent": null,
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "normal",
+      "collapsed": false
+    }
+  ],
   "layers": [
     {
       "name": "Layer 1",
       "visible": true,
       "locked": false,
       "opacity": 1,
-      "cels": ["AAAA…", "AAAA…", { "link": 0 }]
+      "blendMode": "normal",
+      "reference": false,
+      "group": null,
+      "cels": ["AAAA…", { "data": "AAAA…", "opacity": 0.5 }, { "link": 0 }]
+    },
+    {
+      "name": "Shading",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "multiply",
+      "reference": false,
+      "group": 0,
+      "cels": ["AAAA…", "AAAA…", "AAAA…"]
     }
   ]
 }
@@ -38,6 +61,10 @@ A `.raster` file is UTF-8 JSON. Version 5 looks like this:
 | `tags`         | Named frame ranges (animation loops). `from` and `to` are 0-based, both included.              |
 | `layers`       | Bottom to top. At least one.                                                                   |
 | `opacity`      | Layer opacity from 0 to 1.                                                                     |
+| `blendMode`    | `normal`, `multiply`, `screen`, `overlay`, `add`, `darken`, `lighten` or `difference`.         |
+| `reference`    | A reference layer: shown while drawing, left out of exports.                                   |
+| `group`        | Index into `groups` of the layer's innermost group, or `null` at the top level.                |
+| `groups`       | Layer groups. `parent` is an index into the same list, or `null`.                              |
 | `cels`         | One image per frame: base64 of raw RGBA bytes, row-major from the top-left, or `{ "link": n }` |
 
 Each cel decodes to exactly `width × height × 4` bytes. Colors use straight
@@ -56,6 +83,23 @@ numeric `from` and `to`.
 
 The reference image overlay and view settings (zoom, grid, tile mode) are not
 saved in the file.
+
+## Version 6
+
+Version 6 added layer groups, blend modes, reference layers and cel opacity.
+
+- `groups` lists the groups; each layer's `group` points at its innermost
+  one. A group's layers are a contiguous run of `layers`. Groups nest through
+  `parent`; readers drop groups that hold no layers and break parent loops.
+- `blendMode` on a layer or group says how it combines with what's below.
+  Missing or unknown values mean `normal`. A group whose mode is `normal`
+  passes through: its layers composite straight onto what's below, scaled by
+  the group's opacity. A group with another mode composites its layers on
+  their own first, then blends the result with its opacity and mode.
+- `reference: true` marks a layer that is shown but never exported.
+- A cel may be `{ "data": "…", "opacity": 0.5 }`: its image plus an opacity
+  from 0 to 1 that multiplies the layer's. Linked cels share the opacity of
+  the cel they link to.
 
 ## Version 5
 

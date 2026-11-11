@@ -24,12 +24,18 @@ import type { CheckerSize } from '@shared/settings';
 const CHECKER_MIN: Record<CheckerSize, number> = { small: 3, medium: 6, large: 12 };
 /** Pixel grid line opacity, as a hex alpha suffix for the grid color setting. */
 const GRID_ALPHA = '59';
-const ONION_ALPHA = 0.32;
-/** Previous frames tint warm, next frames tint cool. */
-const ONION_TINTS = { prev: [255, 77, 106], next: [77, 140, 255] } as const;
+const hexRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
-/** Writes a tinted, faded copy of `src` into `out` for onion skinning. */
-function tintInto(src: Uint32Array, out: Uint32Array, [tr, tg, tb]: readonly number[]): void {
+/**
+ * Writes a faded copy of `src` into `out` for onion skinning, mixed half way
+ * toward `tint` (an RGB triple) unless it's null.
+ */
+function tintInto(
+  src: Uint32Array,
+  out: Uint32Array,
+  tint: readonly number[] | null,
+  opacity: number,
+): void {
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
     const a = c >>> 24;
@@ -37,10 +43,15 @@ function tintInto(src: Uint32Array, out: Uint32Array, [tr, tg, tb]: readonly num
       out[i] = 0;
       continue;
     }
-    const r = ((c & 255) + tr) >> 1;
-    const g = (((c >>> 8) & 255) + tg) >> 1;
-    const b = (((c >>> 16) & 255) + tb) >> 1;
-    out[i] = ((Math.round(a * ONION_ALPHA) << 24) | (b << 16) | (g << 8) | r) >>> 0;
+    let r = c & 255;
+    let g = (c >>> 8) & 255;
+    let b = (c >>> 16) & 255;
+    if (tint) {
+      r = (r + tint[0]) >> 1;
+      g = (g + tint[1]) >> 1;
+      b = (b + tint[2]) >> 1;
+    }
+    out[i] = ((Math.round(a * opacity) << 24) | (b << 16) | (g << 8) | r) >>> 0;
   }
 }
 const WHEEL_STEP = 60;
@@ -233,27 +244,64 @@ export function CanvasView() {
       };
       if (!s.reference?.above) drawReference();
 
-      // Onion skin: neighbors of the current frame, behind it.
+      // Onion skin: up to MAX_ONION_FRAMES neighbors each way, behind the
+      // current frame; the nearest at full onion opacity, farther ones fainter.
       const showOnion = s.onionSkin && !s.playing && s.frames.length > 1;
       if (showOnion) {
-        const key = `${s.revision}:${s.frame}:${s.width}x${s.height}:${s.frames.length}`;
+        const o = getSettings();
+        // Farthest first, so nearer frames draw on top.
+        const frames: { frame: number; tint: string; opacity: number }[] = [];
+        for (let d = o.onionBefore; d >= 1; d--) {
+          const fade = (o.onionBefore - d + 1) / o.onionBefore;
+          frames.push({
+            frame: s.frame - d,
+            tint: o.onionBeforeColor,
+            opacity: o.onionOpacity * fade,
+          });
+        }
+        for (let d = o.onionAfter; d >= 1; d--) {
+          const fade = (o.onionAfter - d + 1) / o.onionAfter;
+          frames.push({
+            frame: s.frame + d,
+            tint: o.onionAfterColor,
+            opacity: o.onionOpacity * fade,
+          });
+        }
+        const shown = frames.filter((f) => f.frame >= 0 && f.frame < s.frames.length);
+        const key = [
+          s.revision,
+          s.frame,
+          `${s.width}x${s.height}`,
+          s.frames.length,
+          o.onionBefore,
+          o.onionAfter,
+          o.onionOpacity,
+          o.onionTint,
+          o.onionBeforeColor,
+          o.onionAfterColor,
+        ].join(':');
         if (key !== onionKey) {
           onionKey = key;
+          const rows = Math.max(1, shown.length);
           onion.width = s.width;
-          onion.height = s.height * 2;
-          const img = octx.createImageData(s.width, s.height * 2);
+          onion.height = s.height * rows;
+          const img = octx.createImageData(s.width, s.height * rows);
           const out = new Uint32Array(img.data.buffer);
           const size = s.width * s.height;
-          if (s.frame > 0) {
-            tintInto(editor.flattenFrame(s.frame - 1), out.subarray(0, size), ONION_TINTS.prev);
-          }
-          if (s.frame < s.frames.length - 1) {
-            tintInto(editor.flattenFrame(s.frame + 1), out.subarray(size), ONION_TINTS.next);
-          }
+          shown.forEach((f, i) => {
+            const tint = o.onionTint ? hexRgb(f.tint) : null;
+            tintInto(
+              editor.flattenFrame(f.frame),
+              out.subarray(i * size, (i + 1) * size),
+              tint,
+              f.opacity,
+            );
+          });
           octx.putImageData(img, 0, 0);
         }
-        ctx.drawImage(onion, 0, 0, s.width, s.height, ox, oy, w, h);
-        ctx.drawImage(onion, 0, s.height, s.width, s.height, ox, oy, w, h);
+        shown.forEach((_, i) => {
+          ctx.drawImage(onion, 0, i * s.height, s.width, s.height, ox, oy, w, h);
+        });
       }
       ctx.drawImage(buffer, ox, oy, w, h);
       if (s.reference?.above) drawReference();

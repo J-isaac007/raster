@@ -1,4 +1,5 @@
-import { blend, type Color } from './color';
+import { blend, blendMode, type BlendMode } from './color';
+import { celOpacity, copyCelProps } from './cels';
 import type { Rect } from './raster';
 import type { Tag } from './tags';
 
@@ -26,8 +27,31 @@ export interface Layer extends Surface {
   locked: boolean;
   /** 0..1 */
   opacity: number;
+  blendMode: BlendMode;
+  /** Shown while drawing, left out of every export. */
+  reference: boolean;
+  /** The group this layer sits in directly, or null at the top level. */
+  groupId: string | null;
   /** One buffer per frame. */
   cels: Uint32Array[];
+}
+
+/**
+ * A layer group. Groups have no pixels of their own: they label a contiguous
+ * run of the sprite's layers (see core/groups.ts) and can nest. A group is
+ * composited on its own, then blended down with its opacity and blend mode.
+ */
+export interface Group {
+  id: string;
+  name: string;
+  /** The enclosing group, or null at the top level. */
+  parentId: string | null;
+  visible: boolean;
+  /** 0..1 */
+  opacity: number;
+  blendMode: BlendMode;
+  /** Folded in the layer list (a view setting, saved with the file). */
+  collapsed: boolean;
 }
 
 export interface Frame {
@@ -42,6 +66,8 @@ export interface Sprite {
   height: number;
   /** Bottom to top. */
   layers: Layer[];
+  /** Layer groups, in no particular order; layers point at them by `groupId`. */
+  groups: Group[];
   frames: Frame[];
   /** Named frame ranges (animation loops). */
   tags: Tag[];
@@ -72,10 +98,25 @@ export function createLayer(width: number, height: number, name: string, frameCo
     visible: true,
     locked: false,
     opacity: 1,
+    blendMode: 'normal',
+    reference: false,
+    groupId: null,
     width,
     height,
     cels,
     pixels: cels[0],
+  };
+}
+
+export function createGroup(name: string, parentId: string | null = null): Group {
+  return {
+    id: newId(),
+    name,
+    parentId,
+    visible: true,
+    opacity: 1,
+    blendMode: 'normal',
+    collapsed: false,
   };
 }
 
@@ -85,6 +126,7 @@ export function createSprite(width: number, height: number, frameCount = 1): Spr
     width,
     height,
     layers: [createLayer(width, height, 'Layer 1', frameCount)],
+    groups: [],
     frames: Array.from({ length: frameCount }, () => ({ duration: DEFAULT_FRAME_MS })),
     tags: [],
   };
@@ -92,7 +134,7 @@ export function createSprite(width: number, height: number, frameCount = 1): Spr
 
 /**
  * Maps each distinct cel through `fn` once, so frames that shared a buffer
- * share the result too.
+ * share the result too. New buffers keep the cel's properties (opacity).
  */
 export function mapCels(
   cels: readonly Uint32Array[],
@@ -101,7 +143,10 @@ export function mapCels(
   const done = new Map<Uint32Array, Uint32Array>();
   return cels.map((cel, f) => {
     let out = done.get(cel);
-    if (!out) done.set(cel, (out = fn(cel, f)));
+    if (!out) {
+      done.set(cel, (out = fn(cel, f)));
+      copyCelProps(cel, out);
+    }
     return out;
   });
 }
@@ -131,40 +176,131 @@ export function showFrame(sprite: Sprite, frame: number): void {
   for (const layer of sprite.layers) layer.pixels = layer.cels[frame];
 }
 
+export interface CompositeOptions {
+  /** Leave out reference layers, as exports do. */
+  forExport?: boolean;
+}
+
 /** Flattens one frame without changing which frame is shown. */
-export function compositeFrame(sprite: Sprite, frame: number, out?: Uint32Array): Uint32Array {
+export function compositeFrame(
+  sprite: Sprite,
+  frame: number,
+  out?: Uint32Array,
+  options?: CompositeOptions,
+): Uint32Array {
   const view: Sprite = {
     ...sprite,
     layers: sprite.layers.map((l) => ({ ...l, pixels: l.cels[frame] })),
   };
-  return composite(view, out);
+  return composite(view, out, options);
 }
 
-/** Flattens visible layers, bottom to top, into `out` (allocated if omitted). */
-export function composite(sprite: Sprite, out?: Uint32Array): Uint32Array {
+/** Blends `src` onto `dst` in place (skipping transparent pixels). */
+function blendBuffer(dst: Uint32Array, src: Uint32Array, opacity: number, mode: BlendMode): void {
+  if (opacity <= 0) return;
+  for (let i = 0; i < dst.length; i++) {
+    const c = src[i];
+    if (c >>> 24 !== 0) dst[i] = blendMode(dst[i], c, opacity, mode);
+  }
+}
+
+/** Scratch buffers for compositing groups, one per nesting depth. */
+const scratch: Uint32Array[] = [];
+const scratchAt = (depth: number, size: number) => {
+  let buf = scratch[depth];
+  if (!buf || buf.length !== size) buf = scratch[depth] = new Uint32Array(size);
+  buf.fill(0);
+  return buf;
+};
+
+/**
+ * Flattens visible layers, bottom to top, into `out` (allocated if omitted).
+ * Each layer blends with its opacity × its cel's opacity and its blend mode.
+ * A group with the Normal blend mode passes through: its layers blend straight
+ * onto what's below, with the group's opacity applied (so a Multiply layer in a
+ * group still multiplies the layers under the group). A group with another
+ * blend mode composites its layers on their own first, then blends the result
+ * down with its opacity and mode. A hidden group hides everything in it.
+ */
+export function composite(
+  sprite: Sprite,
+  out?: Uint32Array,
+  options?: CompositeOptions,
+): Uint32Array {
   const size = sprite.width * sprite.height;
   const result = out && out.length === size ? out : new Uint32Array(size);
   result.fill(0);
-  for (const layer of sprite.layers) {
-    if (!layer.visible || layer.opacity <= 0) continue;
-    const src = layer.pixels;
-    const opacity = layer.opacity;
-    for (let i = 0; i < size; i++) {
-      const c: Color = src[i];
-      if (c >>> 24 === 0) continue;
-      result[i] = blend(result[i], c, opacity);
+  const groups = new Map(sprite.groups.map((g) => [g.id, g]));
+  const skip = (l: Layer) => !l.visible || (options?.forExport && l.reference);
+
+  if (sprite.groups.length === 0) {
+    for (const layer of sprite.layers) {
+      if (skip(layer)) continue;
+      blendBuffer(result, layer.pixels, layer.opacity * celOpacity(layer.pixels), layer.blendMode);
     }
+    return result;
   }
+
+  // Walk the stack keeping the chain of open groups. An isolated group (any
+  // mode but Normal) renders into its own scratch buffer and blends into its
+  // parent when it closes; a pass-through group only scales opacity.
+  const chainOf = (groupId: string | null): (typeof sprite.groups)[number][] => {
+    const chain = [];
+    for (
+      let g = groupId ? groups.get(groupId) : undefined;
+      g;
+      g = g.parentId ? groups.get(g.parentId) : undefined
+    ) {
+      chain.unshift(g);
+    }
+    return chain;
+  };
+  const open: { group: Group; buf: Uint32Array | null }[] = [];
+  /** Where drawing goes: the innermost isolated group's buffer, or the result. */
+  const target = () => {
+    for (let i = open.length - 1; i >= 0; i--) if (open[i].buf) return open[i].buf!;
+    return result;
+  };
+  /** The opacity of the pass-through groups between here and that target. */
+  const passOpacity = () => {
+    let o = 1;
+    for (let i = open.length - 1; i >= 0 && !open[i].buf; i--) o *= open[i].group.opacity;
+    return o;
+  };
+  const close = () => {
+    const { group, buf } = open.pop()!;
+    if (buf && group.visible) {
+      blendBuffer(target(), buf, group.opacity * passOpacity(), group.blendMode);
+    }
+  };
+  for (const layer of sprite.layers) {
+    const chain = chainOf(layer.groupId);
+    let keep = 0;
+    while (keep < open.length && keep < chain.length && open[keep].group === chain[keep]) keep++;
+    while (open.length > keep) close();
+    for (let d = keep; d < chain.length; d++) {
+      const isolated = chain[d].blendMode !== 'normal';
+      open.push({ group: chain[d], buf: isolated ? scratchAt(d, size) : null });
+    }
+    if (skip(layer) || chain.some((g) => !g.visible)) continue;
+    const opacity = layer.opacity * celOpacity(layer.pixels) * passOpacity();
+    blendBuffer(target(), layer.pixels, opacity, layer.blendMode);
+  }
+  while (open.length) close();
   return result;
 }
 
-/** Blends `upper` onto `lower` in place, honoring the upper layer's opacity. */
+/**
+ * Blends `upper` onto `lower` in place, as compositing would: with the upper
+ * layer's opacity, its cel's opacity and its blend mode.
+ */
 export function mergeInto(lower: Layer, upper: Layer): void {
-  const dst = lower.pixels;
-  const src = upper.pixels;
-  for (let i = 0; i < dst.length; i++) {
-    if (src[i] >>> 24 !== 0) dst[i] = blend(dst[i], src[i], upper.opacity);
-  }
+  blendBuffer(
+    lower.pixels,
+    upper.pixels,
+    upper.opacity * celOpacity(upper.pixels),
+    upper.blendMode,
+  );
 }
 
 export function flipPixels(surface: Surface, axis: 'horizontal' | 'vertical'): void {
